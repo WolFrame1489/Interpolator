@@ -23,7 +23,7 @@ if __name__ == "__main__":
     HandleGCode('coderework.txt', CurrentPos) # делаем точки из ж кода и выдаем им веса
     CartesianPoints = []
     deviation = 30
-    CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos, deviation) # делаем нурбс интерполяцию в координатах мира
+    CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos) # делаем нурбс интерполяцию в координатах мира
     Limits = [[math.radians(-140), math.radians(140)], [math.radians(-160), math.radians(160)], [-100, 100]] # лимиты робота
     Vmaxq1 = 20000000
     Vmaxq2 = 17000000
