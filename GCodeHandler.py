@@ -39,7 +39,7 @@ def HandleGCode(filename, pos):
         if (parsed_gcode.lines[i].command[1] == 1):
             a.type = 'LINEAR'
         if (parsed_gcode.lines[i].get_param('X') != None) and (parsed_gcode.lines[i].get_param('Y') != None) and (parsed_gcode.lines[i].get_param('Z') != None):
-            fw.write((str(parsed_gcode.lines[i].get_param('X') * weight)) + ',' + (str(parsed_gcode.lines[i].get_param('Y') * weight)) + ',' + (str(parsed_gcode.lines[i].get_param('Z') * weight)) + ',' + str(weight)+ '\n')
+            fw.write((str(parsed_gcode.lines[i].get_param('X') * weight)) + ',' + (str(parsed_gcode.lines[i].get_param('Y') * weight)) + ',' + (str(parsed_gcode.lines[i].get_param('Z') * weight)) + ',' + str(weight) + '\n')
             a.ex = parsed_gcode.lines[i].get_param('X')
             a.ey = parsed_gcode.lines[i].get_param('Y')
             a.ez = parsed_gcode.lines[i].get_param('Z')
