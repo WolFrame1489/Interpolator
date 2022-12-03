@@ -4,29 +4,37 @@ import scipy.interpolate
 from geomdl import utilities
 import GCodeHandler
 from GCodeHandler import HandleGCode, weight, MoveList
-from Splines import CreateNURBSCurve, PrepareBSpline, RebuildSpline
+from Splines import CreateNURBSCurve, PrepareBSpline, RebuildSpline, OptimizeNURBS
 from Kins import ScaraInvKins,ScaraInvKins2, ScaraForwardKins
 from scipy.interpolate import make_interp_spline, PPoly, splprep, UnivariateSpline
 import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 150
-    Amax = 200
+    Jmax = 50
+    Amax = 20
+    Vmax = 1.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
     realx = []
     y = []
     realy = []
     JointPoints = []
-    CurrentPos = [150.0, 200.0, 0.0, 150] # начальная позиция робота
+    CurrentPos = [150.0, 200.0, 0.0, 1] # начальная позиция робота
     filename = 'testtraj.cpt'
     gcodeFileName = 'square.txt'
+    print('Linearizing...')
     os.system('python pygcode-norm.py  -al -alp 0.001 ' + gcodeFileName) #линеаризуем файл
+    print('Reading G-code....')
     HandleGCode('coderework.txt', CurrentPos) # делаем точки из ж кода и выдаем им веса
     CartesianPoints = []
     deviation = 30
+    print('Starting geomdl....')
     CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos) # делаем нурбс интерполяцию в координатах мира
+    print('geomdl finished...')
+    print('optimizing Nurbs...')
+    OptimizeNURBS(CartesianPoints)
+    print('Optimization complete...')
     Limits = [[math.radians(-140), math.radians(140)], [math.radians(-160), math.radians(160)], [-100, 100]] # лимиты робота
     Vmaxq1 = 2.0
     Vmaxq2 = 1.7
@@ -45,16 +53,16 @@ if __name__ == "__main__":
     q1 = np.array(q1)
     q2 = np.array(q2)
     q3 = np.array(q3)
-    T = 0.01 # время кадра системы
+    T = 0.001 # время кадра системы
     T = np.arange(0, 10, 10/len(q1))
 # создаем сплайны по 3 осям
-    BSplines = PrepareBSpline(q1, q2, q3, T, 1)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.0)
     knots = BSplines[0][0]
     Coefficients = []
     Coefficients.append(PPoly.from_spline(BSplines[0]).c)
-    BSplines = PrepareBSpline(q1, q2, q3, T, 2)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0.0)
     Coefficients.append(PPoly.from_spline(BSplines[1]).c)
-    BSplines = PrepareBSpline(q1, q2, q3, T, 3)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.0)
     Coefficients.append(PPoly.from_spline(BSplines[2]).c)
     u = 3
     # скорости осей
@@ -77,6 +85,7 @@ if __name__ == "__main__":
     Ay = []
     Az = []
     testx = []
+    print('Creating polynome splines of speed etc...')
     while (u < (len(knots) - 3)):
        Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4))+ (4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
                   + (3 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 2)) \
@@ -113,16 +122,19 @@ if __name__ == "__main__":
     testV = Vq1
     testA = Aq1
     testJ = Jq1
+    print('Starting spline fitting...')
+    s = 0.0
     while i < (len(q1) - 3):
-        knots = utilities.generate_knot_vector(5, len(q1))
+        print(i, s)
+        #knots = utilities.generate_knot_vector(5, len(q1))
         if (abs(Jq1[i]) > Jmax):
             print('jitter1', Jq1[i], i)
             Jq1 = []
             Aq1 = []
             Vq1 = []
-            T = np.delete(T, i)
-            q1 = np.delete(q1, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, 1)
+            #T = np.delete(T, i)
+            #q1 = np.delete(q1, i)
+            BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
             Coefficients[0] = PPoly.from_spline(BSplines[0]).c
             u = 3
             knots = BSplines[0][0]
@@ -130,34 +142,39 @@ if __name__ == "__main__":
             Vq1 = res[0]
             Aq1 = res[1]
             Jq1 = res[2]
+            i = 1
             print(len(knots))
         elif (abs(Aq1[i]) > Amax):
             print('accel1', Aq1[i], i)
             Jq1 = []
             Aq1 = []
             Vq1 = []
-            T = np.delete(T, i)
-            q1 = np.delete(q1, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, 1)
+
+            #T = np.delete(T, i)
+            #q1 = np.delete(q1, i)
+            BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
             Coefficients[0] = PPoly.from_spline(BSplines[0]).c
             u = 3
             knots = BSplines[0][0]
+            i = 1
             Vq1, Aq1, Jq1 = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
         else:
             i += 1
     T = np.arange(0, 10, 10 / len(q2))
     i = 1
     while i < (len(q2) - 3):
-        knots = utilities.generate_knot_vector(5, len(q2))
+        print(i)
+        #knots = utilities.generate_knot_vector(5, len(q2))
         if (abs(Jq2[i]) > Jmax):
             print('jitter2', Jq2[i], i)
             Jq2 = []
             Aq2 = []
             Vq2 = []
-            T = np.delete(T, i)
-            q2 = np.delete(q2, i)
+
+            #T = np.delete(T, i)
+            #q2 = np.delete(q2, i)
             print(len(T), len(q2))
-            BSplines = PrepareBSpline(q1, q2, q3, T, 2)
+            BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
             Coefficients[1] = PPoly.from_spline(BSplines[1]).c
             u = 3
             knots = BSplines[1][0]
@@ -170,10 +187,10 @@ if __name__ == "__main__":
             Jq2 = []
             Aq2 = []
             Vq2 = []
-            T = np.delete(T, i)
-            q2 = np.delete(q2, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, knots,  2)
-            Coefficients[0] = PPoly.from_spline(BSplines[0]).c
+            #T = np.delete(T, i)
+            #q2 = np.delete(q2, i)
+            BSplines = PrepareBSpline(q1, q2, q3, T, knots,  2, s)
+            Coefficients[1] = PPoly.from_spline(BSplines[1]).c
             u = 3
             knots = BSplines[1][0]
             Vq2, Aq2, Jq2 = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 3)
@@ -182,15 +199,16 @@ if __name__ == "__main__":
     T = np.arange(0, 10, 10 / len(q3))
     i = 1
     while i < (len(q3) - 3):
-        knots = utilities.generate_knot_vector(5, len(q3))
+        print(i)
+       # knots = utilities.generate_knot_vector(5, len(q3))
         if (abs(Jq3[i]) > Jmax):
             print('jitter3', Jq3[i], i)
             Jq3 = []
             Aq3 = []
             Vq3 = []
-            T = np.delete(T, i)
-            q1 = np.delete(q3, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, 3)
+            #T = np.delete(T, i)
+            #q1 = np.delete(q3, i)
+            BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
             Coefficients[2] = PPoly.from_spline(BSplines[0]).c
             u = 3
             knots = BSplines[2][0]
@@ -204,9 +222,9 @@ if __name__ == "__main__":
             Jq3 = []
             Aq3 = []
             Vq3 = []
-            T = np.delete(T, i)
-            q3 = np.delete(q1, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, knots, 3)
+            #T = np.delete(T, i)
+            #q3 = np.delete(q1, i)
+            BSplines = PrepareBSpline(q1, q2, q3, T, knots, 3, s)
             Coefficients[2] = PPoly.from_spline(BSplines[0]).c
             u = 3
             knots = BSplines[2][0]

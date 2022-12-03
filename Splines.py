@@ -6,18 +6,20 @@ import plotly
 from pygcode import Line, Machine, GCodeRapidMove
 import os
 from geomdl import operations
-from geomdl import NURBS, BSpline
+from geomdl import NURBS, BSpline, fitting
 from geomdl import exchange
 from geomdl import utilities
 from geomdl.visualization import VisMPL
 from geomdl.visualization import VisPlotly
 from geomdl import knotvector
 import random
-from scipy.interpolate import splrep, splev, splder, splprep, UnivariateSpline
+from scipy.interpolate import splrep, splev, splder, splprep, UnivariateSpline, SmoothBivariateSpline
+from scipy.spatial.distance import cdist
 def CreateNURBSCurve(filename, pos):
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     # Create a NURBS curve instance (full circle)
     curve = NURBS.Curve()
+    curvefit = BSpline.Curve()
     # Set up curve
     curve.degree = 2
     pos[0] *= pos[3]
@@ -36,34 +38,44 @@ def CreateNURBSCurve(filename, pos):
         z.append(curve.ctrlptsw[i][2])
         w.append(curve.ctrlptsw[i][3])
     curve.knotvector = utilities.generate_knot_vector(curve.degree, len(curve.ctrlptsw))
-    print([x,y,z])
-    x = np.array(x)
-    y = np.array(y)
-    z = np.array(z)
-    w = np.array(w)
     # Evaluate curve
     #operations.refine_knotvector(curve, [3])
     curve.delta = 0.001
     points_a = curve.evalpts
     curve.evaluate()
     # Plot the control point polygon and the evaluated curve
-    vis_comp = VisPlotly.VisCurve3D()
-    curve.vis = vis_comp
-    curve.render()
     return points_a
-def PrepareBSpline(q1, q2, q3, T, axis):
-    knots = utilities.generate_knot_vector(5, len(q1))
+def OptimizeNURBS(points):
+    x = []
+    y = []
+    z = []
+    res = tuple()
+    for i in range(len(points)):
+        x.append(points[i][0])
+        y.append(points[i][1])
+        z.append(points[i][2])
+    b = []
+    b.append(x)
+    b.append(y)
+    b.append(z)
+    res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=None, t=None, full_output=0, nest=None, per=0, quiet=1)
+    End = False
+    while not End:
+        End = True
+
+def PrepareBSpline(q1, q2, q3, T, axis, smoothing):
+    num = len(utilities.generate_knot_vector(len(q1), 5))
     t = np.arange(0, 1, 1/len(q2))
     result = []
     q1tck = tuple()
     q2tck = tuple()
     q3tck = tuple()
     if (axis == 1):
-        q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=None, t=None, full_output=0, per=0, quiet=1)
+        q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     elif (axis == 2):
-        q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=5, task=0, s=None, t=None, full_output=0, per=0, quiet=1)
+        q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     else:
-        q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=5, task=0, s=None, t=None, full_output=0, per=0, quiet=1)
+        q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     result.append(q1tck)
     result.append(q2tck)
     result.append(q3tck)

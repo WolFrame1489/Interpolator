@@ -46,6 +46,6 @@ def HandleGCode(filename, pos):
             sx = parsed_gcode.lines[i].get_param('X')
             sy = parsed_gcode.lines[i].get_param('Y')
             sz = parsed_gcode.lines[i].get_param('Z')
-            weight *= 15
+            weight *= 1
         MoveList.append(a)
 
