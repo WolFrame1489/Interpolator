@@ -58,10 +58,39 @@ def OptimizeNURBS(points):
     b.append(x)
     b.append(y)
     b.append(z)
-    res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=None, t=None, full_output=0, nest=None, per=0, quiet=1)
+    res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=0.0, t=None, full_output=0, nest=None, per=0, quiet=1)
+    res = splev(res[1], res[0])
+    ideal = []
+    for i in range(len(res)):
+        ideal.append(list([res[0][i], res[1][i], res[2][i]]))
+    i = 0
+    v = []
+    rang = 0
     End = False
+    smoothing = 0
+    j = 0
+    for i in range(len(res)):
+        v.append(list([res[0][i], res[1][i], res[2][i]]))
     while not End:
-        End = True
+        rang = cdist(ideal, v, 'euclidean')
+        if (rang[j][0] < 1.5) and (rang[j][1] < 1.5) and (rang[j][2] < 1.5):
+            smoothing += 0.1
+            res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
+                          per=0, quiet=1)
+            res = splev(res[1], res[0])
+            rang = []
+            v = []
+            j = 0
+            for i in range(len(res)):
+                v.append(list([res[0][i], res[1][i], res[2][i]]))
+            continue
+        else:
+            j += 1
+        if j == len(rang) - 1:
+            End = True
+    print('smoothing', smoothing)
+    print('Error', rang[-1])
+    return res
 
 def PrepareBSpline(q1, q2, q3, T, axis, smoothing):
     num = len(utilities.generate_knot_vector(len(q1), 5))
