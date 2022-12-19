@@ -11,8 +11,8 @@ import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 100.0
-    Amax = 120.5
+    Jmax = 20.0
+    Amax = 22.5
     Vmax = 1.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print('Starting geomdl....')
     CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos) # делаем нурбс интерполяцию в координатах мира
     print('geomdl finished...')
-    print('optimizing Nurbs...')
+    print('optimizing NURBS...')
     testpoints = OptimizeNURBS(CartesianPoints)
     print('Optimization complete...')
     Limits = [[math.radians(-140), math.radians(140)], [math.radians(-160), math.radians(160)], [-100, 100]] # лимиты робота
@@ -282,7 +282,6 @@ fig.show()
 #plt.plot(T, q1, 'r', label='label here')
 plt.legend(loc='best')
 #plt.show()
-print(len(Vq1))
 T = np.arange(0, len(Vq1), 1)
 
 #plt.plot(T, Vq1, 'b', label='Vq1')
