@@ -3,23 +3,23 @@ import math
 import numpy as np
 import matplotlib as plt
 import plotly
+import scipy.interpolate
 from pygcode import Line, Machine, GCodeRapidMove
 import os
 from geomdl import operations
-from geomdl import NURBS, BSpline, fitting
+from geomdl import NURBS, fitting
 from geomdl import exchange
 from geomdl import utilities
 from geomdl.visualization import VisMPL
 from geomdl.visualization import VisPlotly
 from geomdl import knotvector
 import random
-from scipy.interpolate import splrep, splev, splder, splprep, UnivariateSpline, SmoothBivariateSpline
+from scipy.interpolate import splrep, splev, splder, splprep, UnivariateSpline, SmoothBivariateSpline, BPoly, PPoly, BSpline, spalde
 from scipy.spatial.distance import cdist
 def CreateNURBSCurve(filename, pos):
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     # Create a NURBS curve instance (full circle)
     curve = NURBS.Curve()
-    curvefit = BSpline.Curve()
     # Set up curve
     curve.degree = 2
     pos[0] *= pos[3]
@@ -40,7 +40,7 @@ def CreateNURBSCurve(filename, pos):
     curve.knotvector = utilities.generate_knot_vector(curve.degree, len(curve.ctrlptsw))
     # Evaluate curve
     #operations.refine_knotvector(curve, [3])
-    curve.delta = 0.001
+    curve.delta = 0.0001
     points_a = curve.evalpts
     curve.evaluate()
     # Plot the control point polygon and the evaluated curve
@@ -68,19 +68,20 @@ def OptimizeNURBS(points):
     rang = 0
     End = False
     smoothing = 0
-    j = 0
+    j = 1
     for i in range(len(res)):
         v.append(list([res[0][i], res[1][i], res[2][i]]))
     while not End:
         rang = cdist(ideal, v, 'euclidean')
-        if (rang[j][0] < 1.5) and (rang[j][1] < 1.5) and (rang[j][2] < 1.5):
-            smoothing += 0.1
+        print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
+        if (rang[j][0] < 0.1) and (rang[j][1] < 0.1) and (rang[j][2] < 0.1):
+            smoothing += 14.1
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
             res = splev(res[1], res[0])
             rang = []
             v = []
-            j = 0
+            j = 1
             for i in range(len(res)):
                 v.append(list([res[0][i], res[1][i], res[2][i]]))
             continue
@@ -93,7 +94,9 @@ def OptimizeNURBS(points):
     return res
 
 def PrepareBSpline(q1, q2, q3, T, axis, smoothing):
-    num = len(utilities.generate_knot_vector(len(q1), 5))
+    num = knotvector.generate(5, len(q1), clamped=False)
+    num = np.array(num)
+    num *= T[-1]
     t = np.arange(0, 1, 1/len(q2))
     result = []
     q1tck = tuple()
