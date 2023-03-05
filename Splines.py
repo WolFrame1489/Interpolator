@@ -15,7 +15,7 @@ from geomdl.visualization import VisPlotly
 from geomdl import knotvector
 import random
 from scipy.interpolate import splrep, splev, splder, splprep, UnivariateSpline, SmoothBivariateSpline, BPoly, PPoly, BSpline, spalde
-from scipy.spatial.distance import cdist
+from scipy.spatial.distance import cdist, sqeuclidean
 def CreateNURBSCurve(filename, pos):
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     # Create a NURBS curve instance (full circle)
@@ -74,7 +74,7 @@ def OptimizeNURBS(points):
     while not End:
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.1) and (rang[j][1] < 0.1) and (rang[j][2] < 0.1):
+        if (rang[j][0] < 0.5) and (rang[j][1] < 0.5) and (rang[j][2] < 0 .5):
             smoothing += 14.1
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
@@ -94,19 +94,19 @@ def OptimizeNURBS(points):
     return res
 
 def PrepareBSpline(q1, q2, q3, T, axis, smoothing):
-    num = knotvector.generate(5, len(q1), clamped=False)
-    num = np.array(num)
-    num *= T[-1]
     t = np.arange(0, 1, 1/len(q2))
     result = []
     q1tck = tuple()
     q2tck = tuple()
     q3tck = tuple()
     if (axis == 1):
+        print('spline', len(T), len(q1))
         q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     elif (axis == 2):
+        print('spline', len(T), len(q2))
         q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     else:
+        print('spline', len(T), len(q2))
         q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     result.append(q1tck)
     result.append(q2tck)

@@ -1,4 +1,7 @@
+import math
+
 from gcodeparser import GcodeParser
+from scipy.spatial.distance import sqeuclidean
 weight = 0
 MoveList = []
 class Movement():
@@ -13,7 +16,7 @@ class Movement():
         self.ey = 0
         self.sz = 0
         self.ez = 0
-def HandleGCode(filename, pos):
+def HandleGCode(filename, pos, Vmax):
     global weight
     sx = pos[0]
     sy = pos[1]
@@ -31,10 +34,11 @@ def HandleGCode(filename, pos):
         a.sz = sz
         a.sy = sy
         a.sx = sx
+        a.time = 0
         if (parsed_gcode.lines[i].get_param('F') != None):
-            a.speed = parsed_gcode.lines[i].get_param('F')
+            a.speed = int(parsed_gcode.lines[i].get_param('F'))
         else:
-            a.speed = 150
+            a.speed = Vmax
         #print(parsed_gcode.lines[i].command)
         if (parsed_gcode.lines[i].command[1] == 1):
             a.type = 'LINEAR'
@@ -47,5 +51,9 @@ def HandleGCode(filename, pos):
             sy = parsed_gcode.lines[i].get_param('Y')
             sz = parsed_gcode.lines[i].get_param('Z')
             weight *= 1
+            print([a.sx, a.sy, a.sz], [a.ex, a.ey, a.ez])
+        if (sqeuclidean([a.sx, a.sy, a.sz], [a.ex, a.ey, a.ez]) / a.speed) > 0:
+            a.time = math.sqrt(sqeuclidean([a.sx, a.sy, a.sz], [a.ex, a.ey, a.ez])) / a.speed
+        print('time', a.time)
         MoveList.append(a)
 
