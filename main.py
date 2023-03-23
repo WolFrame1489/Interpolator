@@ -1,3 +1,4 @@
+from derivative import dxdt
 import math
 import numpy as np
 import scipy.interpolate
@@ -6,14 +7,14 @@ import GCodeHandler
 from GCodeHandler import HandleGCode, weight, MoveList
 from Splines import CreateNURBSCurve, PrepareBSpline, RebuildSpline, OptimizeNURBS
 from TimeFeedratePlan import planTime
-from Kins import ScaraInvKins,ScaraInvKins2, ScaraForwardKins
+from Kins import ScaraInvKins,ScaraInvKins2, ScaraForwardKins, ScaraForwardSpeedKins
 from scipy.interpolate import make_interp_spline, PPoly, BPoly, splprep, UnivariateSpline, spalde
 import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 500.5
-    Amax = 100.5
+    Jmax = 3.5
+    Amax = 2.5
     Vmax = 1.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
@@ -62,7 +63,6 @@ if __name__ == "__main__":
     q1 = np.array(q1)
     q2 = np.array(q2)
     q3 = np.array(q3)
-    T = np.arange(0, 10, 10/len(q1))
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
     print(len(q1), len(T))
 # создаем идеальные сплайны по 3 осям
@@ -283,11 +283,14 @@ if q1der[-1][1] > 0:
 else:
     q1der[-1] = [q1[-1], 0, 0, Jmax]
 
-
-
-
+realspeed =[]
+realspeed.append([])
+realspeed.append([])
+realspeed.append([])
+realspeed[0].append(0)
+realspeed[1].append(0)
+realspeed[2].append(0)
 realpoints = []
-realspeed = []
 realpoints.append([])
 realpoints.append([])
 realpoints.append([])
@@ -298,14 +301,29 @@ for i in range((min(len(q1), len(q2), len(q3)))):
     realpoints[0].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[0])
     realpoints[1].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[1])
     realpoints[2].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[2])
+for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
+     realspeed[0].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[0])
+     realspeed[1].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[1])
+     realspeed[2].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[2])
+realspeed[0] = np.array(realpoints[0])
+realspeed[1] = np.array(realpoints[1])
+realspeed[2] = np.array(realpoints[2])
+T = np.array(planTime(times, CartesianPoints, MoveList, Jmax, q1))
+T = np.append(T, T[-1])
+#T = np.delete(T, -1)
+print(len(T), len(realspeed[0]))
+realspeed[0] = dxdt(T, realspeed[0], kind='finite_difference', k=1)
+realspeed[1] = dxdt(T, realspeed[1], kind='finite_difference', k=1)
+realspeed[2] = dxdt(T, realspeed[2], kind='finite_difference', k=1)
+print(realspeed)
+x = np.arange(0, len(realspeed[0]), 1)
+x1 = np.arange(0, len(realspeed[1]), 1)
 
 
 
 
-
-
-i = 1
-v = 0
+# i = 1
+# v = 0
 # print(q1der[i][1], Vq1[i])
 # q1der[i] = [q1[i], v + (0.5 * Amax * (10 / len(q1der))**2), Amax, 0]
 # while (q1der[i][1] < Vq1[i]) and (i < len(Vq1) - 1):
@@ -394,57 +412,87 @@ v = 0
 # Bq1 = Bq1(planTime(times, CartesianPoints, MoveList, Jmax, q1der))
 # Bq2 = Bq2(planTime(times, CartesianPoints, MoveList, Jmax, q2der))
 # Bq3 = Bq3(planTime(times, CartesianPoints, MoveList, Jmax, q2der))
-
-
-realpoints2 = []
-realpoints2.append([])
-realpoints2.append([])
-realpoints2.append([])
-realpoints2[0].append(150)
-realpoints2[1].append(200)
-realpoints2[2].append(0)
-
-
-
-realpoints = []
-realspeed = []
-realpoints.append([])
-realpoints.append([])
-realpoints.append([])
-realpoints[0].append(150)
-realpoints[1].append(200)
-realpoints[2].append(0)
+#
+#
+# realpoints2 = []
+# realpoints2.append([])
+# realpoints2.append([])
+# realpoints2.append([])
+# realpoints2[0].append(150)
+# realpoints2[1].append(200)
+# realpoints2[2].append(0)
+#
+#
+#
+# realpoints = []
+# realspeed = []
+# realpoints.append([])
+# realpoints.append([])
+# realpoints.append([])
+# realpoints[0].append(150)
+# realpoints[1].append(200)
+# realpoints[2].append(0)
+# realspeed.append([])
+# realspeed.append([])
+# realspeed.append([])
+# realspeed[0].append(0)
+# realspeed[1].append(0)
+# realspeed[2].append(0)
+# for i in range((min(len(Bq1), len(Bq2), len(Bq3)))):
+#     realpoints[0].append((ScaraForwardKins([Bq1[i], Bq2[i], Bq3[i]], 175, 275, 100))[0])
+#     realpoints[1].append((ScaraForwardKins([Bq1[i], Bq2[i], Bq3[i]], 175, 275, 100))[1])
+#     realpoints[2].append((ScaraForwardKins([Bq1[i], Bq2[i], Bq3[i]], 175, 275, 100))[2])
+# for i in range((min(len(BVq1), len(BVq2), len(BVq3)))):
+#     realspeed[0].append((ScaraForwardKins([BVq1[i], BVq2[i], BVq3[i]], 175, 275, 100))[0])
+#     realspeed[1].append((ScaraForwardKins([BVq1[i], BVq2[i], BVq3[i]], 175, 275, 100))[1])
+#     realspeed[2].append((ScaraForwardKins([BVq1[i], BVq2[i], BVq3[i]], 175, 275, 100))[2])
+# realspeed[0] = np.array(realpoints[0])
+# realspeed[1] = np.array(realpoints[1])
+# realspeed[2] = np.array(realpoints[2])
+# T = np.array(planTime(times, CartesianPoints, MoveList, Jmax, q1der))
+# T = np.append(T, T[-1])
+# print(T)
+# realspeed[0] = dxdt(realspeed[0], T, kind='finite_difference', k=1)
+# realspeed[1] = dxdt(realspeed[1], T, kind='finite_difference', k=1)
+# realspeed[2] = dxdt(realspeed[2], T, kind='finite_difference', k=1)
+# print(realspeed)
+# x = np.arange(0, len(realspeed[0]), 1)
+# x1 = np.arange(0, len(realspeed[1]), 1)
+vp = []
+j1 = []
+realspeed =[]
 realspeed.append([])
 realspeed.append([])
 realspeed.append([])
 realspeed[0].append(0)
 realspeed[1].append(0)
 realspeed[2].append(0)
-for i in range((min(len(q1), len(q2), len(q3)))):
-    realpoints[0].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[0])
-    realpoints[1].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[1])
-    realpoints[2].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[2])
-for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
-    realspeed[0].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[0])
-    realspeed[1].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[1])
-    realspeed[2].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[2])
-
-x = np.arange(0, len(realspeed[0]), 1)
-x1 = np.arange(0, len(realspeed[1]), 1)
-vp = []
-j1 = []
+temp = ScaraForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275)
+realspeed[0] = temp[0]
+realspeed[1] = temp[1]
+realspeed[2] = temp[2]
 for i in range(len(realspeed[0])):
-    vp.append(math.sqrt(realspeed[0][i]**2 + realspeed[1][i]**2))
+    vp.append(math.sqrt(realspeed[0][i]**2 + realspeed[1][i]**2 + realspeed[2][i]**2))
 for i in range(len(testJ2)):
     j1.append(testJ2[i][4])
 import plotly.graph_objects as go
-fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1]), go.Scatter(x=realpoints2[0], y=realpoints2[1])])
-fig.show()
-fig = go.Figure(data=[go.Scatter(x=T, y=vp)])
-fig.show()
 import plotly.express as px
 from plotly.subplots import make_subplots
-fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
+fig = px.scatter(x=realpoints[0], y=realpoints[1])
+#fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1])])
+fig.show()
+#T = planTime(times, CartesianPoints, MoveList, Jmax, vp[0:-1])
+#T = np.delete(T, -1)
+# T = np.delete(T, -1)
+# T = np.delete(T, -1)
+T = list(T)
+while len(T) > len(vp):
+    print(len(T), len(vp))
+    T.pop()
+fig = px.scatter(x=np.arange(0,len(vp), 1), y=vp)
+fig.show()
+#fig = go.Figure(data=[go.Scatter(x=T, y=BVq1), go.Scatter(x=T, y=BVq2), go.Scatter(x=T, y=BVq3)])
+fig = px.scatter(x=T, y=Vq1)
 fig.show()
 fig = go.Figure(data=[go.Scatter(x=T, y=Aq1), go.Scatter(x=T, y=Aq2), go.Scatter(x=T, y=Aq3)])
 fig.show()

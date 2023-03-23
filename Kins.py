@@ -61,7 +61,7 @@ def ScaraInvKins2(pos, a, b, c, limits, negative_elbow_angle=False):
 
     # if the position is too far away, go to furthest possible point in the same direction
     if dist > a + b:
-        raise ValueError("Позиция недостижимма {}".format(pos))
+        raise ValueError("Позиция недостижима {}".format(pos))
         x /= dist + np.sqrt(a**2 + b**2)
         y /= dist + np.sqrt(a**2 + b**2)
         dist_dist = x**2 + y**2
@@ -76,5 +76,24 @@ def ScaraInvKins2(pos, a, b, c, limits, negative_elbow_angle=False):
         if not inside_limits((alpha, beta, z), limits):
             raise ValueError("Данная точка нарушает лимиты {}".format(pos))
     return (alpha, beta, z/c)
+def ScaraForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, a, b):
+    Vx = []
+    Vy = []
+    Vz = []
+    for i in range(len(Vq3)):
+        Vz.append(-Vq3[i])
+    i = 0
+    for i in range(len(Vq1)):
+        temp = Vq1[i] * (-b * math.sin(q1[i] + q2[i]) - a * math.sin(q1[i]))
+        temp = temp + (-b * math.sin(q1[i] + q2[i])) * Vq2[i]
+        Vx.append(temp)
+    i = 0
+    temp = 0
+    for i in range(len(Vq2)):
+        temp = Vq1[i] * (b * math.cos(q1[i] + q2[i]) - a * math.cos(q1[i]))
+        temp = temp + (b * math.cos(q1[i] + q2[i])) * Vq2[i]
+        Vy.append(temp)
+    return (Vx, Vy, Vz)
+
 
 
