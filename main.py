@@ -13,8 +13,8 @@ import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 3.5
-    Amax = 2.5
+    Jmax = 300000.5
+    Amax = 200000.5
     Vmax = 1.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
@@ -138,6 +138,23 @@ if __name__ == "__main__":
     testV = Vq1
     testA = Aq1
     testJ = Jq1
+    Vq1 = []
+    Vq2 = []
+    Vq3 = []
+    BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.0)
+    temp = spalde(T, BSplines[0])
+    for i in range(len(T)):
+        Vq1.append(temp[i][1])
+    BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0.0)
+    temp = spalde(T, BSplines[1])
+    for i in range(len(T)):
+        Vq2.append(temp[i][1])
+    BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.0)
+    temp = spalde(T, BSplines[2])
+    for i in range(len(T)):
+        Vq3.append(temp[i][1])
+    print('LEN VQ', len(Vq1), len(Vq2), len(Vq3))
+    #exit(0)
     print('Starting spline fitting...')
     s = 0.0
     while i < (len(q1) - 3):
@@ -305,16 +322,16 @@ for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
      realspeed[0].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[0])
      realspeed[1].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[1])
      realspeed[2].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[2])
-realspeed[0] = np.array(realpoints[0])
-realspeed[1] = np.array(realpoints[1])
-realspeed[2] = np.array(realpoints[2])
-T = np.array(planTime(times, CartesianPoints, MoveList, Jmax, q1))
-T = np.append(T, T[-1])
-#T = np.delete(T, -1)
-print(len(T), len(realspeed[0]))
-realspeed[0] = dxdt(T, realspeed[0], kind='finite_difference', k=1)
-realspeed[1] = dxdt(T, realspeed[1], kind='finite_difference', k=1)
-realspeed[2] = dxdt(T, realspeed[2], kind='finite_difference', k=1)
+# realspeed[0] = np.array(realpoints[0])
+# realspeed[1] = np.array(realpoints[1])
+# realspeed[2] = np.array(realpoints[2])
+# T = np.array(planTime(times, CartesianPoints, MoveList, Jmax, q1))
+# T = np.append(T, T[-1])
+# #T = np.delete(T, -1)
+# print(len(T), len(realspeed[0]))
+# realspeed[0] = dxdt(T, realspeed[0], kind='finite_difference', k=1)
+# realspeed[1] = dxdt(T, realspeed[1], kind='finite_difference', k=1)
+# realspeed[2] = dxdt(T, realspeed[2], kind='finite_difference', k=1)
 print(realspeed)
 x = np.arange(0, len(realspeed[0]), 1)
 x1 = np.arange(0, len(realspeed[1]), 1)
