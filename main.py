@@ -13,8 +13,8 @@ import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 300000.5
-    Amax = 200000.5
+    Jmax = 3000.5
+    Amax = 2000.5
     Vmax = 1.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
@@ -66,14 +66,14 @@ if __name__ == "__main__":
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
     print(len(q1), len(T))
 # создаем идеальные сплайны по 3 осям
-    BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.0)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0)
     testJ2 = spalde(T, BSplines[0])
     knots = BSplines[0][0]
     Coefficients = []
     Coefficients.append(PPoly.from_spline(BSplines[0]).c)
-    BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0.0)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0)
     Coefficients.append(PPoly.from_spline(BSplines[1]).c)
-    BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.0)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0)
     Coefficients.append(PPoly.from_spline(BSplines[2]).c)
     u = 3
     # скорости осей
@@ -100,6 +100,7 @@ if __name__ == "__main__":
     Ay = []
     Az = []
     testx = []
+    knots = T
     print('Creating polynome splines of speed etc...')
     while (u < (len(knots) - 3)):
        Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4))+ (4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
@@ -134,34 +135,70 @@ if __name__ == "__main__":
                           6 * Coefficients[2][2][u]))
        u += 1
     i = 3
-
     testV = Vq1
     testA = Aq1
     testJ = Jq1
-    Vq1 = []
-    Vq2 = []
-    Vq3 = []
-    BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.0)
-    temp = spalde(T, BSplines[0])
-    for i in range(len(T)):
-        Vq1.append(temp[i][1])
-    BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0.0)
-    temp = spalde(T, BSplines[1])
-    for i in range(len(T)):
-        Vq2.append(temp[i][1])
-    BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.0)
-    temp = spalde(T, BSplines[2])
-    for i in range(len(T)):
-        Vq3.append(temp[i][1])
-    print('LEN VQ', len(Vq1), len(Vq2), len(Vq3))
+    realspeed = []
+    vp = []
+    realspeed.append([])
+    realspeed.append([])
+    realspeed.append([])
+    realspeed[0].append(0)
+    realspeed[1].append(0)
+    realspeed[2].append(0)
+    temp = ScaraForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275)
+    realspeed[0] = temp[0]
+    realspeed[1] = temp[1]
+    realspeed[2] = temp[2]
+    import plotly.graph_objects as go
+    import plotly.express as px
+    for i in range(len(realspeed[2])):
+        vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
+        T = list(T)
+    while len(T) > len(vp):
+        print(len(T), len(vp))
+        T.pop()
+    fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp)
+    fig.show()
+    fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
+    fig.show()
+    # Vq1 = []
+    # Vq2 = []
+    # Vq3 = []
+    # Aq1 = []
+    # Aq2 = []
+    # Aq3 = []
+    # Jq1 = []
+    # Jq2 = []
+    # Jq3 = []
+    # BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.0)
+    # temp = spalde(T, BSplines[0])
+    # for i in range(len(T)):
+    #     Vq1.append(temp[i][1])
+    #     Aq1.append(temp[i][2])
+    #     Jq1.append(temp[i][3])
+    # BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0.0)
+    # temp = spalde(T, BSplines[1])
+    # for i in range(len(T)):
+    #     Vq2.append(temp[i][1])
+    #     Aq2.append(temp[i][2])
+    #     Jq2.append(temp[i][3])
+    # BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.0)
+    # temp = spalde(T, BSplines[2])
+    # for i in range(len(T)):
+    #     Vq3.append(temp[i][1])
+    #     Aq3.append(temp[i][2])
+    #     Jq3.append(temp[i][3])
+    # print('LEN VQ', len(Vq1), len(Vq2), len(Vq3))
     #exit(0)
     print('Starting spline fitting...')
     s = 0.0
+    T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
     while i < (len(q1) - 3):
         print(len(Jq1))
         if (abs(Jq1[i]) > (Jmax + 0.0001)):
             print('jitter1', Jq1[i], i)
-            s += 1
+            s += 0.0000001
             Jq1 = []
             Aq1 = []
             Vq1 = []
@@ -181,7 +218,7 @@ if __name__ == "__main__":
             print(len(knots))
         elif (abs(Aq1[i]) > Amax):
             print('accel1', Aq1[i], i)
-            s += 1
+            s += 0.0000001
             Jq1 = []
             Aq1 = []
             Vq1 = []
@@ -208,7 +245,7 @@ if __name__ == "__main__":
             Jq2 = []
             Aq2 = []
             Vq2 = []
-
+            s += 0.0000001
             T = np.delete(T, i)
             q2 = np.delete(q2, i)
             #print(len(T), len(q2))
@@ -228,7 +265,7 @@ if __name__ == "__main__":
             Jq2 = []
             Aq2 = []
             Vq2 = []
-            s += 1
+            s += 0.0000001
             T = np.delete(T, i)
             q2 = np.delete(q2, i)
             BSplines = PrepareBSpline(q1, q2, q3, T,  2, s)
@@ -245,11 +282,12 @@ if __name__ == "__main__":
             i += 1
     T = planTime(times, CartesianPoints, MoveList, Jmax, q3)
     i = 1
-    while i < (len(q3) - 3):
+    print(len(q1), len(Jq1),len(q2), len(Jq2),len(q3), len(Jq3))
+    while i < (len(q3) - 7):
        # knots = utilities.generate_knot_vector(5, len(q3))
         if (abs(Jq3[i]) > (Jmax + 0.0001)):
             print('jitter3', Jq3[i], i)
-            s += 1
+            s += 0.0000001
             Jq3 = []
             Aq3 = []
             Vq3 = []
@@ -271,6 +309,7 @@ if __name__ == "__main__":
             Jq3 = []
             Aq3 = []
             Vq3 = []
+            s += 0.0000001
             T = np.delete(T, i)
             q3 = np.delete(q3, i)
             BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
@@ -332,7 +371,7 @@ for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
 # realspeed[0] = dxdt(T, realspeed[0], kind='finite_difference', k=1)
 # realspeed[1] = dxdt(T, realspeed[1], kind='finite_difference', k=1)
 # realspeed[2] = dxdt(T, realspeed[2], kind='finite_difference', k=1)
-print(realspeed)
+#print(realspeed)
 x = np.arange(0, len(realspeed[0]), 1)
 x1 = np.arange(0, len(realspeed[1]), 1)
 
@@ -488,7 +527,7 @@ temp = ScaraForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275)
 realspeed[0] = temp[0]
 realspeed[1] = temp[1]
 realspeed[2] = temp[2]
-for i in range(len(realspeed[0])):
+for i in range(min(len(realspeed[0]), len(realspeed[1]), len(realspeed[2]))):
     vp.append(math.sqrt(realspeed[0][i]**2 + realspeed[1][i]**2 + realspeed[2][i]**2))
 for i in range(len(testJ2)):
     j1.append(testJ2[i][4])
@@ -509,9 +548,13 @@ while len(T) > len(vp):
 fig = px.scatter(x=np.arange(0,len(vp), 1), y=vp)
 fig.show()
 #fig = go.Figure(data=[go.Scatter(x=T, y=BVq1), go.Scatter(x=T, y=BVq2), go.Scatter(x=T, y=BVq3)])
+T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
 fig = px.scatter(x=T, y=Vq1)
 fig.show()
-fig = go.Figure(data=[go.Scatter(x=T, y=Aq1), go.Scatter(x=T, y=Aq2), go.Scatter(x=T, y=Aq3)])
+T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
+fig = go.Figure(data=[go.Scatter(x=T, y=realspeed[0]), go.Scatter(x=T, y=realspeed[1]), go.Scatter(x=T, y=realspeed[2])])
+fig.show()
+fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
 fig.show()
 fig = go.Figure(data=[go.Scatter(x=T, y=Jq1), go.Scatter(x=T, y=Jq2), go.Scatter(x=T, y=Jq3)])
 fig.show()

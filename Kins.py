@@ -83,13 +83,13 @@ def ScaraForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, a, b):
     for i in range(len(Vq3)):
         Vz.append(-Vq3[i])
     i = 0
-    for i in range(len(Vq1)):
+    for i in range(min(len(Vq1), len(Vq2))):
         temp = Vq1[i] * (-b * math.sin(q1[i] + q2[i]) - a * math.sin(q1[i]))
         temp = temp + (-b * math.sin(q1[i] + q2[i])) * Vq2[i]
         Vx.append(temp)
     i = 0
     temp = 0
-    for i in range(len(Vq2)):
+    for i in range(min(len(Vq1), len(Vq2))):
         temp = Vq1[i] * (b * math.cos(q1[i] + q2[i]) - a * math.cos(q1[i]))
         temp = temp + (b * math.cos(q1[i] + q2[i])) * Vq2[i]
         Vy.append(temp)
