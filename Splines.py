@@ -74,8 +74,8 @@ def OptimizeNURBS(points):
     while not End:
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.05) and (rang[j][1] < 0.05) and (rang[j][2] < 0.05):
-            smoothing += 14.1
+        if (rang[j][0] < 0.1) and (rang[j][1] < 0.1) and (rang[j][2] < 0.1):
+            smoothing += 0.1
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
             res = splev(res[1], res[0])

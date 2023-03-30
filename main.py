@@ -13,8 +13,8 @@ import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 3000.5
-    Amax = 2000.5
+    Jmax = 30.5
+    Amax = 20.5
     Vmax = 1.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
