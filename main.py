@@ -7,14 +7,14 @@ import GCodeHandler
 from GCodeHandler import HandleGCode, weight, MoveList
 from Splines import CreateNURBSCurve, PrepareBSpline, RebuildSpline, OptimizeNURBS
 from TimeFeedratePlan import planTime
-from Kins import ScaraInvKins,ScaraInvKins2, ScaraForwardKins, ScaraForwardSpeedKins
+from Kins import InvKins,ScaraInvKins2, ForwardKins, ForwardSpeedKins
 from scipy.interpolate import make_interp_spline, PPoly, BPoly, splprep, UnivariateSpline, spalde
 import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
     Jmax = 30.5
-    Amax = 20.5
+    Amax = 30.5
     Vmax = 1.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     CartesianPoints = []
     for i in range(len(OptimizedPoints[0])):
         CartesianPoints.append([OptimizedPoints[0][i], OptimizedPoints[1][i], OptimizedPoints[2][i]])
-    JointPoints = ScaraInvKins(CartesianPoints, 175, 275, 100, Limits) # делаем ОЗК по полученным точкам
+    JointPoints = InvKins(CartesianPoints, 175, 275, 100, Limits, 'TRIV') # делаем ОЗК по полученным точкам
     x = []
     y = []
     q1 = []
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     realspeed[0].append(0)
     realspeed[1].append(0)
     realspeed[2].append(0)
-    temp = ScaraForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275)
+    temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275, 'TRIV')
     realspeed[0] = temp[0]
     realspeed[1] = temp[1]
     realspeed[2] = temp[2]
@@ -338,7 +338,6 @@ if q1der[-1][1] > 0:
     q1der[-1] = [q1[-1], 0, 0, -Jmax]
 else:
     q1der[-1] = [q1[-1], 0, 0, Jmax]
-
 realspeed =[]
 realspeed.append([])
 realspeed.append([])
@@ -354,13 +353,14 @@ realpoints[0].append(150)
 realpoints[1].append(200)
 realpoints[2].append(0)
 for i in range((min(len(q1), len(q2), len(q3)))):
-    realpoints[0].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[0])
-    realpoints[1].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[1])
-    realpoints[2].append((ScaraForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100))[2])
+    realpoints[0].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[0])
+    realpoints[1].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[1])
+    realpoints[2].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[2])
+print(realpoints)
 for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
-     realspeed[0].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[0])
-     realspeed[1].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[1])
-     realspeed[2].append((ScaraForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100))[2])
+     realspeed[0].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, 'TRIV'))[0])
+     realspeed[1].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, 'TRIV'))[1])
+     realspeed[2].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, 'TRIV'))[2])
 # realspeed[0] = np.array(realpoints[0])
 # realspeed[1] = np.array(realpoints[1])
 # realspeed[2] = np.array(realpoints[2])
@@ -523,7 +523,7 @@ realspeed.append([])
 realspeed[0].append(0)
 realspeed[1].append(0)
 realspeed[2].append(0)
-temp = ScaraForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275)
+temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275, 'TRIV')
 realspeed[0] = temp[0]
 realspeed[1] = temp[1]
 realspeed[2] = temp[2]
