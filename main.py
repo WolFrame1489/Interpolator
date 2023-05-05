@@ -13,20 +13,21 @@ import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 30.5
-    Amax = 30.5
-    Vmax = 1.5
+    Jmax = 100000.5
+    Amax = 100000.5
+    Vmax = 10.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
     realx = []
     y = []
     realy = []
     JointPoints = []
-    CurrentPos = [150.0, 200.0, 0.0, 1] # начальная позиция робота
+    CurrentPos = [181.01, 341.55, 2.0, 1] # начальная позиция робота
     filename = 'testtraj.cpt'
-    gcodeFileName = 'square.txt'
+    gcodeFileName = 'prog_gcode.txt'
     print('Linearizing...')
-    os.system('python pygcode-norm.py  -al -alp 0.001 ' + gcodeFileName) #линеаризуем файл
+    print('getcwd:      ', os.getcwd())
+    os.system('python pygcode-norm.py  -al -alp 0.001 -alm o  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
     print('Reading G-code....')
     HandleGCode('coderework.txt', CurrentPos, Vmax) # делаем точки из ж кода и выдаем им веса
     times = [] # список ля хранения времен, необходимых на каждое движение
@@ -38,6 +39,13 @@ if __name__ == "__main__":
     deviation = 30
     print('Starting geomdl....')
     CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos) # делаем нурбс интерполяцию в координатах мира
+    IdealpointsX = []
+    IdealpointsY = []
+    IdealpointsZ = []
+    for i in range(len(CartesianPoints)):
+        IdealpointsX.append(CartesianPoints[i][0])
+        IdealpointsY.append(CartesianPoints[i][1])
+        IdealpointsZ.append(CartesianPoints[i][2])
     print('geomdl finished...')
     print('optimizing NURBS...')
     OptimizedPoints = OptimizeNURBS(CartesianPoints)
@@ -59,12 +67,14 @@ if __name__ == "__main__":
         q1.append(JointPoints[i][0])
         q2.append(JointPoints[i][1])
         q3.append(JointPoints[i][2])
+
     # массивы координат каждой оси
     q1 = np.array(q1)
     q2 = np.array(q2)
     q3 = np.array(q3)
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
     print(len(q1), len(T))
+
 # создаем идеальные сплайны по 3 осям
     BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0)
     testJ2 = spalde(T, BSplines[0])
@@ -152,16 +162,19 @@ if __name__ == "__main__":
     realspeed[2] = temp[2]
     import plotly.graph_objects as go
     import plotly.express as px
+
+    fig = px.scatter(x=q1, y=q2)
+    fig.show()
     for i in range(len(realspeed[2])):
         vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
         T = list(T)
     while len(T) > len(vp):
         print(len(T), len(vp))
         T.pop()
-    fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp)
-    fig.show()
-    fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
-    fig.show()
+    # fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp)
+    # fig.show()
+    # fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
+    # fig.show()
     # Vq1 = []
     # Vq2 = []
     # Vq3 = []
@@ -194,137 +207,168 @@ if __name__ == "__main__":
     print('Starting spline fitting...')
     s = 0.0
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
-    while i < (len(q1) - 3):
+    i = 0
+    while i < (len(q1)):
         print(len(Jq1))
-        if (abs(Jq1[i]) > (Jmax + 0.0001)):
-            print('jitter1', Jq1[i], i)
-            s += 0.0000001
-            Jq1 = []
-            Aq1 = []
-            Vq1 = []
-            T = np.delete(T, i)
-            q1 = np.delete(q1, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
-            #Coefficients[0] = PPoly.from_spline(BSplines[0]).c
-            u = 3
-            knots = BSplines[0][0]
-            #res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
-            t1 = spalde(T, BSplines[0])
-            for i in range(len(q1) - 2):
-                Vq1.append(t1[i][1])
-                Aq1.append(t1[i][2])
-                Jq1.append(t1[i][3])
-            i = 1
-            print(len(knots))
-        elif (abs(Aq1[i]) > Amax):
-            print('accel1', Aq1[i], i)
-            s += 0.0000001
-            Jq1 = []
-            Aq1 = []
-            Vq1 = []
+        try:
+            if (abs(Jq1[i]) > (Jmax + 0.0001)):
+                print('jitter1', Jq1[i], i)
+                s += 0.1
+                Jq1 = []
+                Aq1 = []
+                Vq1 = []
+                T = np.delete(T, i)
+                q1 = np.delete(q1, i)
+                BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
+                # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
+                u = 3
+                knots = BSplines[0][0]
+                # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                t1 = spalde(T, BSplines[0])
+                for i in range(len(q1) - 2):
+                    Vq1.append(t1[i][1])
+                    Aq1.append(t1[i][2])
+                    Jq1.append(t1[i][3])
+                i = 1
+                print(len(knots))
+            else:
+                i += 1
+        except Exception as e:
+            print('q1 fit error', e)
+            i += 1
+        try:
+            if (abs(Aq1[i]) > Amax):
+                print('accel1', Aq1[i], i)
+                s += 0.1
+                Jq1 = []
+                Aq1 = []
+                Vq1 = []
 
-            T = np.delete(T, i)
-            q1 = np.delete(q1, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
-            #Coefficients[0] = PPoly.from_spline(BSplines[0]).c
-            knots = BSplines[0][0]
-            i = 3
-            t1 = spalde(T, BSplines[0])
-            for i in range(len(q1) - 2):
-                Vq1.append(t1[i][1])
-                Aq1.append(t1[i][2])
-                Jq1.append(t1[i][3])
-        else:
+                T = np.delete(T, i)
+                q1 = np.delete(q1, i)
+                BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
+                # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
+                knots = BSplines[0][0]
+                i = 3
+                t1 = spalde(T, BSplines[0])
+                for i in range(len(q1) - 2):
+                    Vq1.append(t1[i][1])
+                    Aq1.append(t1[i][2])
+                    Jq1.append(t1[i][3])
+            else:
+                i += 1
+        except Exception as e:
+            print('q1 fit error', e)
             i += 1
     T = planTime(times, CartesianPoints, MoveList, Jmax, q2)
     i = 1
-    while i < (len(q2) - 3):
+    while i < (len(q2)):
         #knots = utilities.generate_knot_vector(5, len(q2))
-        if (abs(Jq2[i]) > (Jmax + 0.0001)):
-            print('jitter2', Jq2[i], i)
-            Jq2 = []
-            Aq2 = []
-            Vq2 = []
-            s += 0.0000001
-            T = np.delete(T, i)
-            q2 = np.delete(q2, i)
-            #print(len(T), len(q2))
-            BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
-            #Coefficients[1] = PPoly.from_spline(BSplines[1]).c
-            #u = 3
-            #knots = BSplines[1][0]
-            #res = RebuildSpline(Vq2, Aq2, Jq2, Coefficients, knots, 2)
-            t2 = spalde(T, BSplines[1])
-            for i in range(len(q2) - 2):
-                Vq2.append(t2[i][1])
-                Aq2.append(t2[i][2])
-                Jq2.append(t2[i][3])
-            i = 1
-        elif (abs(Aq2[i]) > Amax):
-            print('accel2', Aq1[i], i)
-            Jq2 = []
-            Aq2 = []
-            Vq2 = []
-            s += 0.0000001
-            T = np.delete(T, i)
-            q2 = np.delete(q2, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T,  2, s)
-            #Coefficients[1] = PPoly.from_spline(BSplines[1]).c
-            #u = 3
-            #knots = BSplines[1][0]
-            t2 = spalde(T, BSplines[1])
-            for i in range(len(q2) - 2):
-                Vq2.append(t2[i][1])
-                Aq2.append(t2[i][2])
-                Jq2.append(t2[i][3])
-            i = 1
-        else:
+        try:
+            if (abs(Jq2[i]) > (Jmax + 0.0001)):
+                print('jitter2', Jq2[i], i)
+                Jq2 = []
+                Aq2 = []
+                Vq2 = []
+                s += 0.1
+                T = np.delete(T, i)
+                q2 = np.delete(q2, i)
+                # print(len(T), len(q2))
+                BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
+                # Coefficients[1] = PPoly.from_spline(BSplines[1]).c
+                # u = 3
+                # knots = BSplines[1][0]
+                # res = RebuildSpline(Vq2, Aq2, Jq2, Coefficients, knots, 2)
+                t2 = spalde(T, BSplines[1])
+                for i in range(len(q2) - 2):
+                    Vq2.append(t2[i][1])
+                    Aq2.append(t2[i][2])
+                    Jq2.append(t2[i][3])
+                i = 1
+            else:
+                i += 1
+        except Exception as e:
+            print('q2 fit error', e)
+            i += 1
+        try:
+            if (abs(Aq2[i]) > Amax):
+                print('accel2', Aq1[i], i)
+                Jq2 = []
+                Aq2 = []
+                Vq2 = []
+                s += 0.1
+                T = np.delete(T, i)
+                q2 = np.delete(q2, i)
+                BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
+                # Coefficients[1] = PPoly.from_spline(BSplines[1]).c
+                # u = 3
+                # knots = BSplines[1][0]
+                t2 = spalde(T, BSplines[1])
+                for i in range(len(q2) - 2):
+                    Vq2.append(t2[i][1])
+                    Aq2.append(t2[i][2])
+                    Jq2.append(t2[i][3])
+                i = 1
+            else:
+                i += 1
+        except Exception as e:
+            print('q2 fit error', e)
             i += 1
     T = planTime(times, CartesianPoints, MoveList, Jmax, q3)
     i = 1
     print(len(q1), len(Jq1),len(q2), len(Jq2),len(q3), len(Jq3))
-    while i < (len(q3) - 7):
-       # knots = utilities.generate_knot_vector(5, len(q3))
-        if (abs(Jq3[i]) > (Jmax + 0.0001)):
-            print('jitter3', Jq3[i], i)
-            s += 0.0000001
-            Jq3 = []
-            Aq3 = []
-            Vq3 = []
-            T = np.delete(T, i)
-            q3 = np.delete(q3, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
-            #Coefficients[2] = PPoly.from_spline(BSplines[0]).c
-            #u = 3
-            #knots = BSplines[2][0]
-            #res = RebuildSpline(Vq3, Aq3, Jq3, Coefficients, knots, 3)
-            t3 = spalde(T, BSplines[2])
-            for i in range(len(q3) - 2):
-                Vq3.append(t3[i][1])
-                Aq3.append(t3[i][2])
-                Jq3.append(t3[i][3])
-            i = 1
-        elif (abs(Aq3[i]) > Amax):
-            print('accel3', Aq1[i], i)
-            Jq3 = []
-            Aq3 = []
-            Vq3 = []
-            s += 0.0000001
-            T = np.delete(T, i)
-            q3 = np.delete(q3, i)
-            BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
-            #Coefficients[2] = PPoly.from_spline(BSplines[0]).c
-            #u = 3
-            #knots = BSplines[2][0]
-            #Vq3, Aq3, Jq3 = RebuildSpline(Vq3, Aq3, Jq3, Coefficients, knots)
-            t3 = spalde(T, BSplines[2])
-            for i in range(len(q3) - 2):
-                Vq3.append(t3[i][1])
-                Aq3.append(t3[i][2])
-                Jq3.append(t3[i][3])
-            i = 1
-        else:
+    while i < (len(q3)):
+        try:
+            if (abs(Jq3[i]) > (Jmax + 0.0001)):
+                print('jitter3', Jq3[i], i)
+                s += 0.1
+                Jq3 = []
+                Aq3 = []
+                Vq3 = []
+                T = np.delete(T, i)
+                q3 = np.delete(q3, i)
+                BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
+                # Coefficients[2] = PPoly.from_spline(BSplines[0]).c
+                # u = 3
+                # knots = BSplines[2][0]
+                # res = RebuildSpline(Vq3, Aq3, Jq3, Coefficients, knots, 3)
+                t3 = spalde(T, BSplines[2])
+                for i in range(len(q3) - 2):
+                    Vq3.append(t3[i][1])
+                    Aq3.append(t3[i][2])
+                    Jq3.append(t3[i][3])
+                i = 1
+            else:
+                i += 1
+        except Exception as e:
+            print('q3 fit error', e)
             i += 1
+        try:
+            if (abs(Aq3[i]) > Amax):
+                print('accel3', Aq1[i], i)
+                Jq3 = []
+                Aq3 = []
+                Vq3 = []
+                s += 0.1
+                T = np.delete(T, i)
+                q3 = np.delete(q3, i)
+                BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
+                # Coefficients[2] = PPoly.from_spline(BSplines[0]).c
+                # u = 3
+                # knots = BSplines[2][0]
+                # Vq3, Aq3, Jq3 = RebuildSpline(Vq3, Aq3, Jq3, Coefficients, knots)
+                t3 = spalde(T, BSplines[2])
+                for i in range(len(q3) - 2):
+                    Vq3.append(t3[i][1])
+                    Aq3.append(t3[i][2])
+                    Jq3.append(t3[i][3])
+                i = 1
+            else:
+                i += 1
+        except Exception as e:
+            print('q3 fit error', e)
+            i += 1
+       # knots = utilities.generate_knot_vector(5, len(q3))
 
 q1der = np.array([[q1[i], Vq1[i], Aq1[i], Jq1[i]] for i in range(min(len(q1), len(Vq1), len(Aq1)))], dtype=object)
 q2der = np.array([[q2[i], Vq2[i], Aq2[i], Jq2[i]] for i in range(min(len(q2), len(Vq2), len(Aq2)))], dtype=object)
@@ -349,9 +393,9 @@ realpoints = []
 realpoints.append([])
 realpoints.append([])
 realpoints.append([])
-realpoints[0].append(150)
-realpoints[1].append(200)
-realpoints[2].append(0)
+realpoints[0].append(CurrentPos[0])
+realpoints[1].append(CurrentPos[1])
+realpoints[2].append(CurrentPos[2])
 for i in range((min(len(q1), len(q2), len(q3)))):
     realpoints[0].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[0])
     realpoints[1].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[1])
@@ -537,6 +581,29 @@ from plotly.subplots import make_subplots
 fig = px.scatter(x=realpoints[0], y=realpoints[1])
 #fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1])])
 fig.show()
+file = open('LookaheadOFF.sgn', 'r')
+file = file.read()
+file = str(file)
+file = file.split('\n') # здесь читаем файл с данными лазерщиков
+refposxindexstart = file.index('}', file.index('Variable= Reference Position(0)'), -1) + 1
+refposxindexend = file.index('===== CH4', refposxindexstart, -1)
+refposyindexstart = file.index('}', file.index('Variable= Reference Position(1)'), -1) + 1
+refposyindexend = file.index('===== CH8', refposyindexstart, -1)
+print(file[refposyindexstart])
+refx = list(map(float, file[refposxindexstart:refposxindexend])) # преобразуем строки в инты
+refy = list(map(float, file[refposyindexstart:refposyindexend]))
+fig = go.Figure(data=[go.Scatter(x=refx, y=refy, name='SPiiPLus points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
+fig.show()
+fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
+fig.show()
+refposxindexstart = file.index('}', file.index('Variable= Reference Velocity(0)'), -1) + 1
+refposxindexend = file.index('===== CH5', refposxindexstart, -1)
+refspeedx = list(map(float, file[refposxindexstart:refposxindexend]))
+t = np.arange(0, len(refspeedx), 1)
+T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
+fig = go.Figure(data=[go.Scatter(x=t, y=refspeedx, name='SPiiPLus speed x'), go.Scatter(x=T, y=Vq1, name='Axis 1 speed')])
+fig.show()
+#fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1]), go.Scatter(x=T, y=realspeed[1]), go.Scatter(x=T, y=realspeed[2])])
 #T = planTime(times, CartesianPoints, MoveList, Jmax, vp[0:-1])
 #T = np.delete(T, -1)
 # T = np.delete(T, -1)
@@ -552,11 +619,13 @@ T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
 fig = px.scatter(x=T, y=Vq1)
 fig.show()
 T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
-fig = go.Figure(data=[go.Scatter(x=T, y=realspeed[0]), go.Scatter(x=T, y=realspeed[1]), go.Scatter(x=T, y=realspeed[2])])
+fig = go.Figure(data=[go.Scatter(x=T, y=realspeed[0], name='Tool X Speed'), go.Scatter(x=T, y=realspeed[1], name='Tool Y Speed'), go.Scatter(x=T, y=realspeed[2], name='Tool Z Speed')])
 fig.show()
-fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
+fig = go.Figure(data=[go.Scatter(x=T, y=Vq1, name='Axis 1 speed'), go.Scatter(x=T, y=Vq2, name='Axis 2 speed'), go.Scatter(x=T, y=Vq3, name='Axis 3 speed')])
 fig.show()
-fig = go.Figure(data=[go.Scatter(x=T, y=Jq1), go.Scatter(x=T, y=Jq2), go.Scatter(x=T, y=Jq3)])
+fig = go.Figure(data=[go.Scatter(x=T, y=Aq1, name='Axis 1 accel'), go.Scatter(x=T, y=Aq2, name='Axis 2 accel'), go.Scatter(x=T, y=Aq3, name='Axis 3 accel')])
+fig.show()
+fig = go.Figure(data=[go.Scatter(x=T, y=Jq1, name='Axis 1 jerk'), go.Scatter(x=T, y=Jq2, name='Axis 2 jerk'), go.Scatter(x=T, y=Jq3, name='Axis 3 jerk')])
 fig.show()
 #test2 = scipy.interpolate.splev(T, BSplines[0])
 

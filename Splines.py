@@ -37,6 +37,10 @@ def CreateNURBSCurve(filename, pos):
         y.append(curve.ctrlptsw[i][1])
         z.append(curve.ctrlptsw[i][2])
         w.append(curve.ctrlptsw[i][3])
+    import plotly.graph_objects as go
+    import plotly.express as px
+    fig = px.scatter(x=x, y=y)
+    fig.show()
     curve.knotvector = utilities.generate_knot_vector(curve.degree, len(curve.ctrlptsw))
     # Evaluate curve
     #operations.refine_knotvector(curve, [3])
@@ -74,9 +78,9 @@ def OptimizeNURBS(points):
     while not End:
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.1) and (rang[j][1] < 0.1) and (rang[j][2] < 0.1):
-            smoothing += 1.1
-            res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
+        if (rang[j][0] < 0.01) and (rang[j][1] < 0.01) and (rang[j][2] < 0.01):
+            smoothing += 100
+            res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
             res = splev(res[1], res[0])
             rang = []
@@ -101,13 +105,13 @@ def PrepareBSpline(q1, q2, q3, T, axis, smoothing):
     q3tck = tuple()
     if (axis == 1):
         print('spline', len(T), len(q1))
-        q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
+        q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=4, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     elif (axis == 2):
         print('spline', len(T), len(q2))
-        q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
+        q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=4, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     else:
         print('spline', len(T), len(q2))
-        q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
+        q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=4, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     result.append(q1tck)
     result.append(q2tck)
     result.append(q3tck)

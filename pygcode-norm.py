@@ -10,7 +10,8 @@ import argparse
 import re
 from collections import defaultdict
 from contextlib import contextmanager
-f = open('C:\projects\Interpolator\coderework.txt', 'w')
+import os
+f = open(os.getcwd() + '\\' + 'coderework.txt', 'w')
 for pygcode_lib_type in ('installed_lib', 'relative_lib'):
     try:
         # pygcode
@@ -277,9 +278,11 @@ def write(gcodes, modal_params=tuple(), comment=None, macro=None):
         line_str = ' '.join(line_list)
         f.write(line_str + '\n')
         if line_str or not args.rm_blanks:
-            #print(line_str)
-
-            f.write(line_str + '\n')
+            print('LINESTR', line_str)
+            if 'G01' not in line_str:
+                f.write('G01 ' + line_str + '\n')
+            else:
+                f.write(line_str + '\n')
 
 
 def gcodes2str(gcodes):
