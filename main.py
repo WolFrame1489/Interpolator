@@ -22,9 +22,9 @@ if __name__ == "__main__":
     y = []
     realy = []
     JointPoints = []
-    CurrentPos = [181.01, 341.55, 2.0, 1] # начальная позиция робота
+    CurrentPos = [0.0, 0.0, 2.0, 1] # начальная позиция робота
     filename = 'testtraj.cpt'
-    gcodeFileName = 'prog_gcode.txt'
+    gcodeFileName = 'prog2_gcode.txt'
     print('Linearizing...')
     print('getcwd:      ', os.getcwd())
     os.system('python pygcode-norm.py  -al -alp 0.001 -alm o  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
@@ -213,7 +213,7 @@ if __name__ == "__main__":
         try:
             if (abs(Jq1[i]) > (Jmax + 0.0001)):
                 print('jitter1', Jq1[i], i)
-                s += 0.1
+                s /= 10
                 Jq1 = []
                 Aq1 = []
                 Vq1 = []
@@ -239,7 +239,7 @@ if __name__ == "__main__":
         try:
             if (abs(Aq1[i]) > Amax):
                 print('accel1', Aq1[i], i)
-                s += 0.1
+                s /= 10
                 Jq1 = []
                 Aq1 = []
                 Vq1 = []
@@ -270,7 +270,7 @@ if __name__ == "__main__":
                 Jq2 = []
                 Aq2 = []
                 Vq2 = []
-                s += 0.1
+                s /= 10
                 T = np.delete(T, i)
                 q2 = np.delete(q2, i)
                 # print(len(T), len(q2))
@@ -296,7 +296,7 @@ if __name__ == "__main__":
                 Jq2 = []
                 Aq2 = []
                 Vq2 = []
-                s += 0.1
+                s /= 10
                 T = np.delete(T, i)
                 q2 = np.delete(q2, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
@@ -321,7 +321,7 @@ if __name__ == "__main__":
         try:
             if (abs(Jq3[i]) > (Jmax + 0.0001)):
                 print('jitter3', Jq3[i], i)
-                s += 0.1
+                s /= 10
                 Jq3 = []
                 Aq3 = []
                 Vq3 = []
@@ -349,7 +349,7 @@ if __name__ == "__main__":
                 Jq3 = []
                 Aq3 = []
                 Vq3 = []
-                s += 0.1
+                s /= 10
                 T = np.delete(T, i)
                 q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
@@ -582,17 +582,26 @@ fig = px.scatter(x=realpoints[0], y=realpoints[1])
 #fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1])])
 fig.show()
 file = open('LookaheadOFF.sgn', 'r')
+
 file = file.read()
 file = str(file)
 file = file.split('\n') # здесь читаем файл с данными лазерщиков
 refposxindexstart = file.index('}', file.index('Variable= Reference Position(0)'), -1) + 1
 refposxindexend = file.index('===== CH4', refposxindexstart, -1)
+
+# refposxindexstart = file.index('}', file.index('Variable= Feedback Position(0)'), -1) + 1
+# refposxindexend = file.index('===== CH2', refposxindexstart, -1)
+
 refposyindexstart = file.index('}', file.index('Variable= Reference Position(1)'), -1) + 1
 refposyindexend = file.index('===== CH8', refposyindexstart, -1)
+
+
+# refposxindexstart = file.index('}', file.index('Variable= Feedback Position(1)'), -1) + 1
+# refposxindexend = file.index('===== CH6', refposxindexstart, -1)
 print(file[refposyindexstart])
 refx = list(map(float, file[refposxindexstart:refposxindexend])) # преобразуем строки в инты
 refy = list(map(float, file[refposyindexstart:refposyindexend]))
-fig = go.Figure(data=[go.Scatter(x=refx, y=refy, name='SPiiPLus points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
+fig = go.Figure(data=[go.Scatter(x=refy, y=refx, name='SPiiPLus points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
 fig.show()
 fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
 fig.show()
