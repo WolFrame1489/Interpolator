@@ -36,7 +36,7 @@ def HandleGCode(filename, pos, Vmax):
         a.sx = sx
         a.time = 0
         if (parsed_gcode.lines[i].get_param('F') != None):
-            a.speed = int(parsed_gcode.lines[i].get_param('F'))
+            a.speed = int(parsed_gcode.lines[i].get_param('F')) / 1000
         else:
             a.speed = Vmax
         #print(parsed_gcode.lines[i].command)

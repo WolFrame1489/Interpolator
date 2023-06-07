@@ -13,8 +13,8 @@ import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 100000.5
-    Amax = 100000.5
+    Jmax = 60000.5
+    Amax = 6000.5
     Vmax = 10.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
@@ -22,12 +22,12 @@ if __name__ == "__main__":
     y = []
     realy = []
     JointPoints = []
-    CurrentPos = [0.0, 0.0, 2.0, 1] # начальная позиция робота
+    CurrentPos = [0.0, 0.0, 0.0, 1] # начальная позиция робота
     filename = 'testtraj.cpt'
-    gcodeFileName = 'prog2_gcode.txt'
+    gcodeFileName = 'prg1.txt'
     print('Linearizing...')
     print('getcwd:      ', os.getcwd())
-    os.system('python pygcode-norm.py  -al -alp 0.001 -alm o  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
+    os.system('python pygcode-norm.py  -al -alp 0.001 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
     print('Reading G-code....')
     HandleGCode('coderework.txt', CurrentPos, Vmax) # делаем точки из ж кода и выдаем им веса
     times = [] # список ля хранения времен, необходимых на каждое движение
@@ -208,12 +208,13 @@ if __name__ == "__main__":
     s = 0.0
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
     i = 0
+    s = 1
     while i < (len(q1)):
         print(len(Jq1))
         try:
             if (abs(Jq1[i]) > (Jmax + 0.0001)):
-                print('jitter1', Jq1[i], i)
-                s /= 10
+                print('jerk1', Jq1[i], i)
+                s *= 5.3
                 Jq1 = []
                 Aq1 = []
                 Vq1 = []
@@ -239,7 +240,7 @@ if __name__ == "__main__":
         try:
             if (abs(Aq1[i]) > Amax):
                 print('accel1', Aq1[i], i)
-                s /= 10
+                s *= 5.3
                 Jq1 = []
                 Aq1 = []
                 Vq1 = []
@@ -262,15 +263,16 @@ if __name__ == "__main__":
             i += 1
     T = planTime(times, CartesianPoints, MoveList, Jmax, q2)
     i = 1
+    s = 1
     while i < (len(q2)):
         #knots = utilities.generate_knot_vector(5, len(q2))
         try:
             if (abs(Jq2[i]) > (Jmax + 0.0001)):
-                print('jitter2', Jq2[i], i)
+                print('jerk2', Jq2[i], i)
                 Jq2 = []
                 Aq2 = []
                 Vq2 = []
-                s /= 10
+                s *= 5.3
                 T = np.delete(T, i)
                 q2 = np.delete(q2, i)
                 # print(len(T), len(q2))
@@ -296,7 +298,7 @@ if __name__ == "__main__":
                 Jq2 = []
                 Aq2 = []
                 Vq2 = []
-                s /= 10
+                s *= 5.3
                 T = np.delete(T, i)
                 q2 = np.delete(q2, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
@@ -317,11 +319,12 @@ if __name__ == "__main__":
     T = planTime(times, CartesianPoints, MoveList, Jmax, q3)
     i = 1
     print(len(q1), len(Jq1),len(q2), len(Jq2),len(q3), len(Jq3))
+    s = 1
     while i < (len(q3)):
         try:
             if (abs(Jq3[i]) > (Jmax + 0.0001)):
-                print('jitter3', Jq3[i], i)
-                s /= 10
+                print('jerk3', Jq3[i], i)
+                s *= 5.3
                 Jq3 = []
                 Aq3 = []
                 Vq3 = []
@@ -349,7 +352,7 @@ if __name__ == "__main__":
                 Jq3 = []
                 Aq3 = []
                 Vq3 = []
-                s /= 10
+                s *= 5.3
                 T = np.delete(T, i)
                 q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
@@ -581,23 +584,33 @@ from plotly.subplots import make_subplots
 fig = px.scatter(x=realpoints[0], y=realpoints[1])
 #fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1])])
 fig.show()
-file = open('LookaheadOFF.sgn', 'r')
+file = open('prg1.sgn', 'r')
 
 file = file.read()
 file = str(file)
 file = file.split('\n') # здесь читаем файл с данными лазерщиков
 refposxindexstart = file.index('}', file.index('Variable= Reference Position(0)'), -1) + 1
-refposxindexend = file.index('===== CH4', refposxindexstart, -1)
+refposxindexend = file.index('===== CH5', refposxindexstart, -1)
 
-# refposxindexstart = file.index('}', file.index('Variable= Feedback Position(0)'), -1) + 1
-# refposxindexend = file.index('===== CH2', refposxindexstart, -1)
-
+#
 refposyindexstart = file.index('}', file.index('Variable= Reference Position(1)'), -1) + 1
-refposyindexend = file.index('===== CH8', refposyindexstart, -1)
-
-
-# refposxindexstart = file.index('}', file.index('Variable= Feedback Position(1)'), -1) + 1
-# refposxindexend = file.index('===== CH6', refposxindexstart, -1)
+refposyindexend = file.index('===== CH2', refposyindexstart, -1)
+#
+#
+# # refposxindexstart = file.index('}', file.index('Variable= Feedback Position(1)'), -1) + 1
+# # refposxindexend = file.index('===== CH6', refposxindexstart, -1)
+# refposxindexstart = file.index('}', file.index('Variable= Reference Position(0)'), -1) + 1
+# refposxindexend = file.index('===== CH4', refposxindexstart, -1)
+#
+# # refposxindexstart = file.index('}', file.index('Variable= Feedback Position(0)'), -1) + 1
+# # refposxindexend = file.index('===== CH2', refposxindexstart, -1)
+#
+# refposyindexstart = file.index('}', file.index('Variable= Reference Position(1)'), -1) + 1
+# refposyindexend = file.index('===== CH8', refposyindexstart, -1)
+#
+#
+# # refposxindexstart = file.index('}', file.index('Variable= Feedback Position(1)'), -1) + 1
+# # refposxindexend = file.index('===== CH6', refposxindexstart, -1)
 print(file[refposyindexstart])
 refx = list(map(float, file[refposxindexstart:refposxindexend])) # преобразуем строки в инты
 refy = list(map(float, file[refposyindexstart:refposyindexend]))
@@ -625,7 +638,7 @@ fig = px.scatter(x=np.arange(0,len(vp), 1), y=vp)
 fig.show()
 #fig = go.Figure(data=[go.Scatter(x=T, y=BVq1), go.Scatter(x=T, y=BVq2), go.Scatter(x=T, y=BVq3)])
 T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
-fig = px.scatter(x=T, y=Vq1)
+fig = px.scatter(x=T, y=Vq1, title='Axis 1 speed')
 fig.show()
 T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
 fig = go.Figure(data=[go.Scatter(x=T, y=realspeed[0], name='Tool X Speed'), go.Scatter(x=T, y=realspeed[1], name='Tool Y Speed'), go.Scatter(x=T, y=realspeed[2], name='Tool Z Speed')])

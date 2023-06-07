@@ -44,7 +44,7 @@ def CreateNURBSCurve(filename, pos):
     curve.knotvector = utilities.generate_knot_vector(curve.degree, len(curve.ctrlptsw))
     # Evaluate curve
     #operations.refine_knotvector(curve, [3])
-    curve.delta = 0.0001
+    curve.delta = 0.00001
     points_a = curve.evalpts
     curve.evaluate()
     # Plot the control point polygon and the evaluated curve
@@ -62,7 +62,7 @@ def OptimizeNURBS(points):
     b.append(x)
     b.append(y)
     b.append(z)
-    res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=0.0, t=None, full_output=0, nest=None, per=0, quiet=1)
+    res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=0.0, t=None, full_output=0, nest=None, per=0, quiet=1)
     res = splev(res[1], res[0])
     ideal = []
     for i in range(len(res)):
@@ -73,13 +73,14 @@ def OptimizeNURBS(points):
     End = False
     smoothing = 0
     j = 1
+    smoothing = 1
     for i in range(len(res)):
         v.append(list([res[0][i], res[1][i], res[2][i]]))
     while not End:
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.01) and (rang[j][1] < 0.01) and (rang[j][2] < 0.01):
-            smoothing /= 10
+        if (rang[j][0] < 0.5) and (rang[j][1] < 0.5) and (rang[j][2] < 0.5):
+            smoothing *= 10
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
             res = splev(res[1], res[0])
