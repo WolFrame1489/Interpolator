@@ -13,8 +13,8 @@ import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 60000.5
-    Amax = 6000.5
+    Jmax = 600000.5
+    Amax = 600000.5
     Vmax = 10.5
     Vmove = 0.005
     GCodeHandler.weight = 1.0 # вес начальной точки
@@ -22,12 +22,12 @@ if __name__ == "__main__":
     y = []
     realy = []
     JointPoints = []
-    CurrentPos = [0.0, 0.0, 0.0, 1] # начальная позиция робота
+    CurrentPos = [0.1, 10.0, 0.0, 1] # начальная позиция робота
     filename = 'testtraj.cpt'
-    gcodeFileName = 'prg1.txt'
+    gcodeFileName = 'square.txt'
     print('Linearizing...')
     print('getcwd:      ', os.getcwd())
-    os.system('python pygcode-norm.py  -al -alp 0.001 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
+    os.system('python pygcode-norm.py  -al -alp 0.1 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
     print('Reading G-code....')
     HandleGCode('coderework.txt', CurrentPos, Vmax) # делаем точки из ж кода и выдаем им веса
     times = [] # список ля хранения времен, необходимых на каждое движение
@@ -46,6 +46,11 @@ if __name__ == "__main__":
         IdealpointsX.append(CartesianPoints[i][0])
         IdealpointsY.append(CartesianPoints[i][1])
         IdealpointsZ.append(CartesianPoints[i][2])
+    import plotly.express as px
+
+    fig = px.scatter(x=IdealpointsX, y=IdealpointsY, title="BSPLINETEST")
+    fig.show()
+    exit(0)
     print('geomdl finished...')
     print('optimizing NURBS...')
     OptimizedPoints = OptimizeNURBS(CartesianPoints)
@@ -230,7 +235,7 @@ if __name__ == "__main__":
                     Vq1.append(t1[i][1])
                     Aq1.append(t1[i][2])
                     Jq1.append(t1[i][3])
-                i = 1
+                i = 0
                 print(len(knots))
             else:
                 i += 1
@@ -286,7 +291,7 @@ if __name__ == "__main__":
                     Vq2.append(t2[i][1])
                     Aq2.append(t2[i][2])
                     Jq2.append(t2[i][3])
-                i = 1
+                i = 0
             else:
                 i += 1
         except Exception as e:
@@ -310,7 +315,7 @@ if __name__ == "__main__":
                     Vq2.append(t2[i][1])
                     Aq2.append(t2[i][2])
                     Jq2.append(t2[i][3])
-                i = 1
+                i = 0
             else:
                 i += 1
         except Exception as e:
@@ -340,7 +345,7 @@ if __name__ == "__main__":
                     Vq3.append(t3[i][1])
                     Aq3.append(t3[i][2])
                     Jq3.append(t3[i][3])
-                i = 1
+                i = 0
             else:
                 i += 1
         except Exception as e:
@@ -365,7 +370,7 @@ if __name__ == "__main__":
                     Vq3.append(t3[i][1])
                     Aq3.append(t3[i][2])
                     Jq3.append(t3[i][3])
-                i = 1
+                i = 0
             else:
                 i += 1
         except Exception as e:
@@ -614,16 +619,23 @@ refposyindexend = file.index('===== CH2', refposyindexstart, -1)
 print(file[refposyindexstart])
 refx = list(map(float, file[refposxindexstart:refposxindexend])) # преобразуем строки в инты
 refy = list(map(float, file[refposyindexstart:refposyindexend]))
-fig = go.Figure(data=[go.Scatter(x=refy, y=refx, name='SPiiPLus points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
+fig = go.Figure(data=[go.Scatter(x=refy, y=refx, name='SPiiPLus points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points'), go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
 fig.show()
 fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
 fig.show()
-refposxindexstart = file.index('}', file.index('Variable= Reference Velocity(0)'), -1) + 1
-refposxindexend = file.index('===== CH5', refposxindexstart, -1)
+refposxindexstart = file.index('}', file.index('Variable= Feedback Velocity(0)'), -1) + 1
+refposxindexend = -1
+refposyindexstart = file.index('}', file.index('Variable= Feedback Velocity(1)'), -1) + 1
+refposyindexend = file.index('===== CH4', refposyindexstart, -1)
 refspeedx = list(map(float, file[refposxindexstart:refposxindexend]))
+refspeedy = list(map(float, file[refposyindexstart:refposyindexend]))
 t = np.arange(0, len(refspeedx), 1)
 T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
-fig = go.Figure(data=[go.Scatter(x=t, y=refspeedx, name='SPiiPLus speed x'), go.Scatter(x=T, y=Vq1, name='Axis 1 speed')])
+fig = go.Figure(data=[go.Scatter(x=t, y=refspeedx, name='SPiiPLus speed x')])
+fig.show()
+fig = go.Figure(data=[go.Scatter(x=t, y=refspeedy, name='SPiiPLus speed y')])
+fig.show()
+fig = go.Figure(data=[go.Scatter(x=T, y=Vq1, name='Axis 1 speed')])
 fig.show()
 #fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1]), go.Scatter(x=T, y=realspeed[1]), go.Scatter(x=T, y=realspeed[2])])
 #T = planTime(times, CartesianPoints, MoveList, Jmax, vp[0:-1])
