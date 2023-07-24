@@ -14,7 +14,7 @@ from geomdl.visualization import VisMPL
 from geomdl.visualization import VisPlotly
 from geomdl import knotvector
 import random
-from scipy.interpolate import splrep, splev, splder, splprep, UnivariateSpline, SmoothBivariateSpline, BPoly, PPoly, BSpline, spalde
+from scipy.interpolate import splrep, splev, splder, splprep, make_interp_spline, interp1d, BSpline, PPoly, BSpline, spalde
 from scipy.spatial.distance import cdist, sqeuclidean
 def CreateNURBSCurve(filename, pos):
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -32,21 +32,63 @@ def CreateNURBSCurve(filename, pos):
     y = []
     z = []
     w = []
+    # while i < (len(curve.ctrlptsw) - 1):
+    #     if curve.ctrlptsw[i] == curve.ctrlptsw[i+1]:
+    #         curve.ctrlptsw.pop(i+1)
+    #         i = 0
+    #         continue
+    #     i += 1
+    i = 0
     for i in range(len(curve.ctrlptsw)):
         x.append(curve.ctrlptsw[i][0])
         y.append(curve.ctrlptsw[i][1])
         z.append(curve.ctrlptsw[i][2])
         w.append(curve.ctrlptsw[i][3])
+    print(curve.ctrlptsw)
     import plotly.graph_objects as go
     import plotly.express as px
-    fig = px.scatter(x=x, y=y)
-    fig.show()
+    #fig = px.scatter(x=x, y=y)
+    #fig.show()
     curve.knotvector = utilities.generate_knot_vector(curve.degree, len(curve.ctrlptsw))
-    # Evaluate curve
-    #operations.refine_knotvector(curve, [3])
-    curve.delta = 0.00001
-    points_a = curve.evalpts
-    curve.evaluate()
+    t = np.linspace(0, 1, 100000)
+    T = np.linspace(0, 1, len(x))
+    xyz = np.array([x,y,z])
+    points_a = []
+    print(T.ndim)
+    spline = interp1d(x=T, y=x)
+    points_x = spline(t)
+    spline = interp1d(x=T, y=y)
+    points_y = spline(t)
+    spline = interp1d(x=T, y=z)
+    points_z = spline(t)
+    for i in range(len(points_y)):
+        points_a.append(np.array([points_x[i], points_y[i], points_z[i]]))
+    points_a = np.array(points_a)
+    row_indexes = np.unique(points_a, return_index=True, axis=0)[1]
+    _, idx = np.unique(points_a, axis=0, return_index=True)
+    points_a = points_a[np.sort(idx)]
+    print(points_a)
+    for a in points_a:
+        a = list(a)
+        #print(a)
+    # print(len(res))
+    # x = []
+    # y = []
+    # z = []
+    # for i in range(len(res)):
+    #     x.append(res[i][0])
+    #     y.append(res[i][1])
+    #     z.append(res[i][2])
+    #     print(i)
+    # import plotly.express as px
+    # fig = px.scatter(x=x, y=y)
+    # fig.show()
+    #
+    # # Evaluate curve
+    # #operations.refine_knotvector(curve, [3])
+    # curve.delta = 0.001
+    # points_a = curve.evalpts
+    # curve.evaluate()
     # Plot the control point polygon and the evaluated curve
     return points_a
 def OptimizeNURBS(points):
@@ -79,9 +121,9 @@ def OptimizeNURBS(points):
     while not End:
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.5) and (rang[j][1] < 0.5) and (rang[j][2] < 0.5):
-            smoothing *= 10
-            res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=smoothing, t=None, full_output=0, nest=None,
+        if (rang[j][0] < 0.05) and (rang[j][1] < 0.05) and (rang[j][2] < 0.050):
+            smoothing *= 1.5
+            res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
             res = splev(res[1], res[0])
             rang = []
@@ -106,13 +148,13 @@ def PrepareBSpline(q1, q2, q3, T, axis, smoothing):
     q3tck = tuple()
     if (axis == 1):
         print('spline', len(T), len(q1))
-        q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=4, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
+        q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     elif (axis == 2):
         print('spline', len(T), len(q2))
-        q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=4, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
+        q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     else:
         print('spline', len(T), len(q2))
-        q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=4, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
+        q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     result.append(q1tck)
     result.append(q2tck)
     result.append(q3tck)

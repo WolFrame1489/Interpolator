@@ -50,7 +50,6 @@ if __name__ == "__main__":
 
     fig = px.scatter(x=IdealpointsX, y=IdealpointsY, title="BSPLINETEST")
     fig.show()
-    exit(0)
     print('geomdl finished...')
     print('optimizing NURBS...')
     OptimizedPoints = OptimizeNURBS(CartesianPoints)
