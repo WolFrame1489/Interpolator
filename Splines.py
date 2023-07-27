@@ -16,7 +16,7 @@ from geomdl import knotvector
 import random
 from scipy.interpolate import splrep, splev, splder, splprep, make_interp_spline, interp1d, BSpline, PPoly, BSpline, spalde
 from scipy.spatial.distance import cdist, sqeuclidean
-def CreateNURBSCurve(filename, pos):
+def CreateNURBSCurve(filename, pos, NumberOfPoints):
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     # Create a NURBS curve instance (full circle)
     curve = NURBS.Curve()
@@ -50,7 +50,7 @@ def CreateNURBSCurve(filename, pos):
     #fig = px.scatter(x=x, y=y)
     #fig.show()
     curve.knotvector = utilities.generate_knot_vector(curve.degree, len(curve.ctrlptsw))
-    t = np.linspace(0, 1, 100000)
+    t = np.linspace(0, 1, NumberOfPoints)
     T = np.linspace(0, 1, len(x))
     xyz = np.array([x,y,z])
     points_a = []
@@ -104,7 +104,7 @@ def OptimizeNURBS(points):
     b.append(x)
     b.append(y)
     b.append(z)
-    res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=0.0, t=None, full_output=0, nest=None, per=0, quiet=1)
+    res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=1.1, t=None, full_output=0, nest=None, per=0, quiet=1)
     res = splev(res[1], res[0])
     ideal = []
     for i in range(len(res)):
@@ -121,7 +121,7 @@ def OptimizeNURBS(points):
     while not End:
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.05) and (rang[j][1] < 0.05) and (rang[j][2] < 0.050):
+        if (rang[j][0] < 0.05) and (rang[j][1] < 0.05) and (rang[j][2] < 0.05):
             smoothing *= 1.5
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)

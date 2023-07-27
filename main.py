@@ -8,15 +8,16 @@ from GCodeHandler import HandleGCode, weight, MoveList
 from Splines import CreateNURBSCurve, PrepareBSpline, RebuildSpline, OptimizeNURBS
 from TimeFeedratePlan import planTime
 from Kins import InvKins,ScaraInvKins2, ForwardKins, ForwardSpeedKins
-from scipy.interpolate import make_interp_spline, PPoly, BPoly, splprep, UnivariateSpline, spalde
+from scipy.interpolate import make_interp_spline, PPoly, BSpline, splprep, UnivariateSpline, spalde
 import os
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 600000.5
-    Amax = 600000.5
+    Jmax = 60000000.5
+    Amax = 60000000.5
     Vmax = 10.5
     Vmove = 0.005
+    PosCycleTime = 0.000001 # время такта контура позиции
     GCodeHandler.weight = 1.0 # вес начальной точки
     realx = []
     y = []
@@ -31,14 +32,21 @@ if __name__ == "__main__":
     print('Reading G-code....')
     HandleGCode('coderework.txt', CurrentPos, Vmax) # делаем точки из ж кода и выдаем им веса
     times = [] # список ля хранения времен, необходимых на каждое движение
-    for i in GCodeHandler.MoveList:
-        if i.time == 0:
-            MoveList.pop(MoveList.index(i))
-        times.append(i.time)
+    i = 0
+    print(GCodeHandler.MoveList)
+    while i < len(GCodeHandler.MoveList):
+        print(GCodeHandler.MoveList[i].time)
+        if GCodeHandler.MoveList[i].time != 0:
+            times.append(GCodeHandler.MoveList[i].time)
+        i+=1
+    SumTime = sum(times)
+    print(times)
+    PointsAmount = math.ceil(SumTime / PosCycleTime * 10 / 100) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
+    print(PointsAmount)
     CartesianPoints = []
     deviation = 30
     print('Starting geomdl....')
-    CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos) # делаем нурбс интерполяцию в координатах мира
+    CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos, PointsAmount) # делаем нурбс интерполяцию в координатах мира
     IdealpointsX = []
     IdealpointsY = []
     IdealpointsZ = []
@@ -228,6 +236,7 @@ if __name__ == "__main__":
                 # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
                 u = 3
                 knots = BSplines[0][0]
+                axis1tck = BSplines[0]
                 # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
                 t1 = spalde(T, BSplines[0])
                 for i in range(len(q1) - 2):
@@ -254,6 +263,7 @@ if __name__ == "__main__":
                 BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
                 # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
                 knots = BSplines[0][0]
+                axis1tck = BSplines[0]
                 i = 3
                 t1 = spalde(T, BSplines[0])
                 for i in range(len(q1) - 2):
@@ -689,6 +699,15 @@ plt.legend(loc='best')
 plt.legend(loc='best')
 #plt.show()
 
+
+
+testspline = BSpline(axis1tck[0], axis1tck[1], 5)
+testspline = testspline.construct_fast(axis1tck[0], axis1tck[1], axis1tck[2])
+testtime = np.linspace(0, SumTime, int(1/0.000001))
+speedtest = testspline(testtime, 0)
+print(len(speedtest))
+fig = px.scatter(x=testtime, y=speedtest, title='Axis 1 speed')
+fig.show()
 
 
 
