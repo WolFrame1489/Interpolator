@@ -40,9 +40,8 @@ if __name__ == "__main__":
             times.append(GCodeHandler.MoveList[i].time)
         i+=1
     SumTime = sum(times)
-    print(times)
-    PointsAmount = math.ceil(SumTime / PosCycleTime * 10 / 100) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
-    print(PointsAmount)
+    print(SumTime, times)
+    PointsAmount = math.ceil(SumTime * 5000) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
     CartesianPoints = []
     deviation = 30
     print('Starting geomdl....')
@@ -76,27 +75,38 @@ if __name__ == "__main__":
     q2 = []
     q3 = []
     for i in range(len(JointPoints)):
-        q1.append(JointPoints[i][0])
-        q2.append(JointPoints[i][1])
-        q3.append(JointPoints[i][2])
+        if i > 0 and JointPoints[i] != JointPoints[i - 1]:
+            q1.append(JointPoints[i][0])
+        if i > 0 and JointPoints[i] != JointPoints[i - 1]:
+            q2.append(JointPoints[i][1])
+        if i > 0 and JointPoints[i] != JointPoints[i - 1]:
+            q3.append(JointPoints[i][2])
+
 
     # массивы координат каждой оси
     q1 = np.array(q1)
     q2 = np.array(q2)
     q3 = np.array(q3)
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
-    print(len(q1), len(T))
+    print(T[-1])
 
 # создаем идеальные сплайны по 3 осям
-    BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 1, 1.1)
+    axis1tck = BSplines[0]
     testJ2 = spalde(T, BSplines[0])
     knots = BSplines[0][0]
+    knots1 = BSplines[0][0]
     Coefficients = []
     Coefficients.append(PPoly.from_spline(BSplines[0]).c)
-    BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 2, 1.1)
+    axis2tck = BSplines[1]
+    knots2 = BSplines[1][0]
     Coefficients.append(PPoly.from_spline(BSplines[1]).c)
-    BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0)
+    BSplines = PrepareBSpline(q1, q2, q3, T, 3, 1.1)
+    axis3tck = BSplines[2]
+    knots3 = BSplines[2][0]
     Coefficients.append(PPoly.from_spline(BSplines[2]).c)
+    print(len(knots1), len(knots2), len(knots3))
     u = 3
     # скорости осей
     Vq1 = []
@@ -124,39 +134,59 @@ if __name__ == "__main__":
     testx = []
     knots = T
     print('Creating polynome splines of speed etc...')
-    while (u < (len(knots) - 3)):
-       Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4))+ (4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
-                  + (3 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 2)) \
-             + (2 * Coefficients[0][3][u] * ((knots[u] / len(knots)))) + (Coefficients[0][4][u]))
-       Vq2.append((5 * Coefficients[1][0][u] * (knots[u] / len(knots)) ** 4) + (4 * Coefficients[1][1][u] * (knots[u] / len(knots)) ** 3) + (
-                   3 * Coefficients[1][2][u] * (knots[u] / len(knots)) ** 2) \
-                  + (2 * Coefficients[1][3][u] * (knots[u] / len(knots))) + (Coefficients[1][4][u]))
-       Vq3.append((5 * Coefficients[2][0][u] * (knots[u] / len(knots)) ** 4) + (4 * Coefficients[2][1][u] * (knots[u] / len(knots)) ** 3) + (
-               3 * Coefficients[2][2][u] * (knots[u] / len(knots)) ** 2) \
-                  + (2 * Coefficients[2][3][u] * (knots[u] / len(knots))) + (Coefficients[2][4][u]))
-       Aq1.append((20 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 3)) + (
-                   12 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 2)) + (
-                              6 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 1)) \
-                  + (2 * Coefficients[0][3][u]))
-       Aq2.append((20 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 3)) + (
-               12 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 2)) + (
-                          6 * Coefficients[1][2][u] * ((knots[u] / len(knots)) ** 1)) \
-                  + (2 * Coefficients[1][3][u]))
-       Aq3.append((20 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 3)) + (
-               12 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 2)) + (
-                          6 * Coefficients[2][2][u] * ((knots[u] / len(knots)) ** 1)) \
-                  + (2 * Coefficients[2][3][u]))
-       Jq1.append((60 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 2)) + (
-               24 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 1)) + (
-                          6 * Coefficients[0][2][u]))
-       Jq2.append((60 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 2)) + (
-               24 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 1)) + (
-                          6 * Coefficients[1][2][u]))
-       Jq3.append((60 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 2)) + (
-               24 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 1)) + (
-                          6 * Coefficients[2][2][u]))
-       u += 1
+    i = 0
+    BSplines = PrepareBSpline(q1, q2, q3, T, 1, 5.1)
+    t1 = spalde(T, BSplines[0])
+    for i in range(len(q1) - 2):
+        Vq1.append(t1[i][1])
+        Aq1.append(t1[i][2])
+        Jq1.append(t1[i][3])
+    BSplines = PrepareBSpline(q1, q2, q3, T, 2, 5.1)
+    t2 = spalde(T, BSplines[1])
+    for i in range(len(q2) - 2):
+        Vq2.append(t2[i][1])
+        Aq2.append(t2[i][2])
+        Jq2.append(t2[i][3])
+    BSplines = PrepareBSpline(q1, q2, q3, T, 3, 5.1)
+    t3 = spalde(T, BSplines[2])
+    for i in range(len(q3) - 2):
+        Vq3.append(t3[i][1])
+        Aq3.append(t3[i][2])
+        Jq3.append(t3[i][3])
+    # while (u < (len(knots)) - 4):
+    #    Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4))+ (4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
+    #               + (3 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 2)) \
+    #          + (2 * Coefficients[0][3][u] * ((knots[u] / len(knots)))) + (Coefficients[0][4][u]))
+    #    Vq2.append((5 * Coefficients[1][0][u] * (knots[u] / len(knots)) ** 4) + (4 * Coefficients[1][1][u] * (knots[u] / len(knots)) ** 3) + (
+    #                3 * Coefficients[1][2][u] * (knots[u] / len(knots)) ** 2) \
+    #               + (2 * Coefficients[1][3][u] * (knots[u] / len(knots))) + (Coefficients[1][4][u]))
+    #    Vq3.append((5 * Coefficients[2][0][u] * (knots[u] / len(knots)) ** 4) + (4 * Coefficients[2][1][u] * (knots[u] / len(knots)) ** 3) + (
+    #            3 * Coefficients[2][2][u] * (knots[u] / len(knots)) ** 2) \
+    #               + (2 * Coefficients[2][3][u] * (knots[u] / len(knots))) + (Coefficients[2][4][u]))
+    #    Aq1.append((20 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 3)) + (
+    #                12 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                           6 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 1)) \
+    #               + (2 * Coefficients[0][3][u]))
+    #    Aq2.append((20 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 3)) + (
+    #            12 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                       6 * Coefficients[1][2][u] * ((knots[u] / len(knots)) ** 1)) \
+    #               + (2 * Coefficients[1][3][u]))
+    #    Aq3.append((20 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 3)) + (
+    #            12 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                       6 * Coefficients[2][2][u] * ((knots[u] / len(knots)) ** 1)) \
+    #               + (2 * Coefficients[2][3][u]))
+    #    Jq1.append((60 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #            24 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 1)) + (
+    #                       6 * Coefficients[0][2][u]))
+    #    Jq2.append((60 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #            24 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 1)) + (
+    #                       6 * Coefficients[1][2][u]))
+    #    Jq3.append((60 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #            24 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 1)) + (
+    #                       6 * Coefficients[2][2][u]))
+    #    u += 1
     i = 3
+    #print(Vq1)
     testV = Vq1
     testA = Aq1
     testJ = Jq1
@@ -177,12 +207,13 @@ if __name__ == "__main__":
 
     fig = px.scatter(x=q1, y=q2)
     fig.show()
-    for i in range(len(realspeed[2])):
-        vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
-        T = list(T)
-    while len(T) > len(vp):
-        print(len(T), len(vp))
-        T.pop()
+    # for i in range(len(realspeed[2])):
+    #     print(i)
+    #     vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
+    #     T = list(T)
+    # while len(T) > len(vp):
+    #     print(len(T), len(vp))
+    #     T.pop()
     # fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp)
     # fig.show()
     # fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
@@ -226,7 +257,7 @@ if __name__ == "__main__":
         try:
             if (abs(Jq1[i]) > (Jmax + 0.0001)):
                 print('jerk1', Jq1[i], i)
-                s *= 5.3
+                s *= 7.3
                 Jq1 = []
                 Aq1 = []
                 Vq1 = []
@@ -253,7 +284,7 @@ if __name__ == "__main__":
         try:
             if (abs(Aq1[i]) > Amax):
                 print('accel1', Aq1[i], i)
-                s *= 5.3
+                s *= 7.3
                 Jq1 = []
                 Aq1 = []
                 Vq1 = []
@@ -286,11 +317,12 @@ if __name__ == "__main__":
                 Jq2 = []
                 Aq2 = []
                 Vq2 = []
-                s *= 5.3
+                s *= 7.3
                 T = np.delete(T, i)
                 q2 = np.delete(q2, i)
                 # print(len(T), len(q2))
                 BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
+                axis2tck = BSplines[1]
                 # Coefficients[1] = PPoly.from_spline(BSplines[1]).c
                 # u = 3
                 # knots = BSplines[1][0]
@@ -312,10 +344,11 @@ if __name__ == "__main__":
                 Jq2 = []
                 Aq2 = []
                 Vq2 = []
-                s *= 5.3
+                s *= 7.3
                 T = np.delete(T, i)
                 q2 = np.delete(q2, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
+                axis2tck = BSplines[1]
                 # Coefficients[1] = PPoly.from_spline(BSplines[1]).c
                 # u = 3
                 # knots = BSplines[1][0]
@@ -338,13 +371,14 @@ if __name__ == "__main__":
         try:
             if (abs(Jq3[i]) > (Jmax + 0.0001)):
                 print('jerk3', Jq3[i], i)
-                s *= 5.3
+                s *= 7.3
                 Jq3 = []
                 Aq3 = []
                 Vq3 = []
                 T = np.delete(T, i)
                 q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
+                axis3tck = BSplines[2]
                 # Coefficients[2] = PPoly.from_spline(BSplines[0]).c
                 # u = 3
                 # knots = BSplines[2][0]
@@ -366,10 +400,11 @@ if __name__ == "__main__":
                 Jq3 = []
                 Aq3 = []
                 Vq3 = []
-                s *= 5.3
+                s *= 7.3
                 T = np.delete(T, i)
                 q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
+                axis3tck = BSplines[2]
                 # Coefficients[2] = PPoly.from_spline(BSplines[0]).c
                 # u = 3
                 # knots = BSplines[2][0]
@@ -699,14 +734,41 @@ plt.legend(loc='best')
 plt.legend(loc='best')
 #plt.show()
 
+# теперь можно перестроить сплайны и опрделеить их вдоль оси времени сервы
 
+tempspline = BSpline(axis1tck[0], axis1tck[1], 5)
+testspline = tempspline.construct_fast(axis1tck[0], axis1tck[1], axis1tck[2])
+timeaxis = np.linspace(0, SumTime, int(1/PosCycleTime))
+Axis1FinalPos = testspline(timeaxis, 0)
+Axis1FinalSpeed = testspline(timeaxis, 1)
+Axis1FinalAcc = testspline(timeaxis, 2)
+fig = px.scatter(x=timeaxis, y=Axis1FinalSpeed, title='Axis 1 speed')
+fig.show()
+file = open('axis1res.txt', 'w')
+for i in range(len(timeaxis)):
+    if i == 0:
+        file.write('time' + "\t" + 'position' + "\t" + 'speed' + "\t" + 'acc' + "\t" + "\n")
+        file.write(str(timeaxis[i]) + "\t" + str(Axis1FinalPos[i]) + "\t" + str(Axis1FinalSpeed[i]) + "\t" + str(Axis1FinalAcc[i]) + "\t" + "\n")
+        continue
+    else:
+        file.write(str(timeaxis[i]) + "\t" + str(Axis1FinalPos[i]) + "\t" + str(Axis1FinalSpeed[i]) + "\t" + str(Axis1FinalAcc[i]) + "\t" + "\n")
 
-testspline = BSpline(axis1tck[0], axis1tck[1], 5)
-testspline = testspline.construct_fast(axis1tck[0], axis1tck[1], axis1tck[2])
-testtime = np.linspace(0, SumTime, int(1/0.000001))
-speedtest = testspline(testtime, 0)
-print(len(speedtest))
-fig = px.scatter(x=testtime, y=speedtest, title='Axis 1 speed')
+tempspline = BSpline(axis2tck[0], axis2tck[1], 5)
+testspline = tempspline.construct_fast(axis2tck[0], axis2tck[1], axis2tck[2])
+timeaxis = np.linspace(0, SumTime, int(1/PosCycleTime))
+Axis2FinalPos = testspline(timeaxis, 0)
+Axis2FinalSpeed = testspline(timeaxis, 1)
+Axis2FinalAcc = testspline(timeaxis, 2)
+fig = px.scatter(x=timeaxis, y=Axis2FinalSpeed, title='Axis 2 speed')
+fig.show()
+
+tempspline = BSpline(axis3tck[0], axis3tck[1], 5)
+testspline = tempspline.construct_fast(axis3tck[0], axis3tck[1], axis3tck[2])
+timeaxis = np.linspace(0, SumTime, int(1/PosCycleTime))
+Axis3FinalPos = testspline(timeaxis, 0)
+Axis3FinalSpeed = testspline(timeaxis, 1)
+Axis3FinalAcc = testspline(timeaxis, 2)
+fig = px.scatter(x=timeaxis, y=Axis3FinalSpeed, title='Axis 3 speed')
 fig.show()
 
 

@@ -95,6 +95,8 @@ def OptimizeNURBS(points):
     x = []
     y = []
     z = []
+    _, idx = np.unique(points, axis=0, return_index=True)
+    points = points[np.sort(idx)]
     res = tuple()
     for i in range(len(points)):
         x.append(points[i][0])
@@ -121,7 +123,7 @@ def OptimizeNURBS(points):
     while not End:
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.05) and (rang[j][1] < 0.05) and (rang[j][2] < 0.05):
+        if (rang[j][0] < 0.0000005) and (rang[j][1] < 0.0000005) and (rang[j][2] < 0.0000005):
             smoothing *= 1.5
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
