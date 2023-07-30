@@ -10,6 +10,7 @@ from TimeFeedratePlan import planTime
 from Kins import InvKins,ScaraInvKins2, ForwardKins, ForwardSpeedKins
 from scipy.interpolate import make_interp_spline, PPoly, BSpline, splprep, UnivariateSpline, spalde
 import os
+import csv
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
@@ -25,7 +26,7 @@ if __name__ == "__main__":
     JointPoints = []
     CurrentPos = [0.1, 10.0, 0.0, 1] # начальная позиция робота
     filename = 'testtraj.cpt'
-    gcodeFileName = 'square.txt'
+    gcodeFileName = 'triangle.txt'
     print('Linearizing...')
     print('getcwd:      ', os.getcwd())
     os.system('python pygcode-norm.py  -al -alp 0.1 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
@@ -44,8 +45,8 @@ if __name__ == "__main__":
     PointsAmount = math.ceil(SumTime * 5000) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
     CartesianPoints = []
     deviation = 30
-    print('Starting geomdl....')
-    CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos, PointsAmount) # делаем нурбс интерполяцию в координатах мира
+    print('Starting lirear interp....')
+    CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos, PointsAmount) # делаем линейную интерполяцию в координатах мира
     IdealpointsX = []
     IdealpointsY = []
     IdealpointsZ = []
@@ -252,6 +253,7 @@ if __name__ == "__main__":
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
     i = 0
     s = 1
+    # здесь  начинаем подбирать коэф. сглаживания, чтобы траектория удовлетворяла ограничениям
     while i < (len(q1)):
         print(len(Jq1))
         try:
@@ -448,6 +450,7 @@ realpoints.append([])
 realpoints[0].append(CurrentPos[0])
 realpoints[1].append(CurrentPos[1])
 realpoints[2].append(CurrentPos[2])
+# по пзк получаем траекторию инструмента
 for i in range((min(len(q1), len(q2), len(q3)))):
     realpoints[0].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[0])
     realpoints[1].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[1])
@@ -661,6 +664,7 @@ refposyindexend = file.index('===== CH2', refposyindexstart, -1)
 # # refposxindexstart = file.index('}', file.index('Variable= Feedback Position(1)'), -1) + 1
 # # refposxindexend = file.index('===== CH6', refposxindexstart, -1)
 print(file[refposyindexstart])
+# строим графики из файлов Spiiplus
 refx = list(map(float, file[refposxindexstart:refposxindexend])) # преобразуем строки в инты
 refy = list(map(float, file[refposyindexstart:refposyindexend]))
 fig = go.Figure(data=[go.Scatter(x=refy, y=refx, name='SPiiPLus points'), go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points'), go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')]) #go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
@@ -675,12 +679,12 @@ refspeedx = list(map(float, file[refposxindexstart:refposxindexend]))
 refspeedy = list(map(float, file[refposyindexstart:refposyindexend]))
 t = np.arange(0, len(refspeedx), 1)
 T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
-fig = go.Figure(data=[go.Scatter(x=t, y=refspeedx, name='SPiiPLus speed x')])
-fig.show()
-fig = go.Figure(data=[go.Scatter(x=t, y=refspeedy, name='SPiiPLus speed y')])
-fig.show()
-fig = go.Figure(data=[go.Scatter(x=T, y=Vq1, name='Axis 1 speed')])
-fig.show()
+# fig = go.Figure(data=[go.Scatter(x=t, y=refspeedx, name='SPiiPLus speed x')])
+# fig.show()
+# fig = go.Figure(data=[go.Scatter(x=t, y=refspeedy, name='SPiiPLus speed y')])
+# fig.show()
+# fig = go.Figure(data=[go.Scatter(x=T, y=Vq1, name='Axis 1 speed')])
+# fig.show()
 #fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1]), go.Scatter(x=T, y=realspeed[1]), go.Scatter(x=T, y=realspeed[2])])
 #T = planTime(times, CartesianPoints, MoveList, Jmax, vp[0:-1])
 #T = np.delete(T, -1)
@@ -734,37 +738,48 @@ plt.legend(loc='best')
 plt.legend(loc='best')
 #plt.show()
 
-# теперь можно перестроить сплайны и опрделеить их вдоль оси времени сервы
+# теперь можно перестроить сплайны по полученным коэф и опрделеить их вдоль оси времени сервы
 
 tempspline = BSpline(axis1tck[0], axis1tck[1], 5)
 testspline = tempspline.construct_fast(axis1tck[0], axis1tck[1], axis1tck[2])
-timeaxis = np.linspace(0, SumTime, int(1/PosCycleTime))
+timeaxis = np.linspace(0, SumTime, int(SumTime/PosCycleTime))
 Axis1FinalPos = testspline(timeaxis, 0)
 Axis1FinalSpeed = testspline(timeaxis, 1)
 Axis1FinalAcc = testspline(timeaxis, 2)
 fig = px.scatter(x=timeaxis, y=Axis1FinalSpeed, title='Axis 1 speed')
 fig.show()
-file = open('axis1res.txt', 'w')
+file = open('axis1res.csv', 'w')
+filewriter = csv.writer(file, delimiter=';', lineterminator="\r")
 for i in range(len(timeaxis)):
     if i == 0:
-        file.write('time' + "\t" + 'position' + "\t" + 'speed' + "\t" + 'acc' + "\t" + "\n")
-        file.write(str(timeaxis[i]) + "\t" + str(Axis1FinalPos[i]) + "\t" + str(Axis1FinalSpeed[i]) + "\t" + str(Axis1FinalAcc[i]) + "\t" + "\n")
+        filewriter.writerow(['time', 'position', 'speed', 'acc'])
+        filewriter.writerow([timeaxis[i], Axis1FinalPos[i], Axis1FinalSpeed[i], Axis1FinalAcc[i]])
         continue
     else:
-        file.write(str(timeaxis[i]) + "\t" + str(Axis1FinalPos[i]) + "\t" + str(Axis1FinalSpeed[i]) + "\t" + str(Axis1FinalAcc[i]) + "\t" + "\n")
+        filewriter.writerow([timeaxis[i], Axis1FinalPos[i], Axis1FinalSpeed[i], Axis1FinalAcc[i]])
 
 tempspline = BSpline(axis2tck[0], axis2tck[1], 5)
 testspline = tempspline.construct_fast(axis2tck[0], axis2tck[1], axis2tck[2])
-timeaxis = np.linspace(0, SumTime, int(1/PosCycleTime))
+timeaxis = np.linspace(0, SumTime, int(SumTime/PosCycleTime))
 Axis2FinalPos = testspline(timeaxis, 0)
 Axis2FinalSpeed = testspline(timeaxis, 1)
 Axis2FinalAcc = testspline(timeaxis, 2)
 fig = px.scatter(x=timeaxis, y=Axis2FinalSpeed, title='Axis 2 speed')
 fig.show()
 
+file = open('axis2res.csv', 'w')
+filewriter = csv.writer(file, delimiter=';', lineterminator="\r")
+for i in range(len(timeaxis)):
+    if i == 0:
+        filewriter.writerow(['time', 'position', 'speed', 'acc'])
+        filewriter.writerow([timeaxis[i], Axis2FinalPos[i], Axis2FinalSpeed[i], Axis2FinalAcc[i]])
+        continue
+    else:
+        filewriter.writerow([timeaxis[i], Axis2FinalPos[i], Axis2FinalSpeed[i], Axis2FinalAcc[i]])
+
 tempspline = BSpline(axis3tck[0], axis3tck[1], 5)
 testspline = tempspline.construct_fast(axis3tck[0], axis3tck[1], axis3tck[2])
-timeaxis = np.linspace(0, SumTime, int(1/PosCycleTime))
+timeaxis = np.linspace(0, SumTime, int(SumTime/PosCycleTime))
 Axis3FinalPos = testspline(timeaxis, 0)
 Axis3FinalSpeed = testspline(timeaxis, 1)
 Axis3FinalAcc = testspline(timeaxis, 2)
@@ -772,7 +787,17 @@ fig = px.scatter(x=timeaxis, y=Axis3FinalSpeed, title='Axis 3 speed')
 fig.show()
 
 
+file = open('axis3res.csv', 'w')
+filewriter = csv.writer(file, delimiter=';', lineterminator="\r")
+for i in range(len(timeaxis)):
+    if i == 0:
+        filewriter.writerow(['time', 'position', 'speed', 'acc'])
+        filewriter.writerow([timeaxis[i], Axis3FinalPos[i], Axis3FinalSpeed[i], Axis3FinalAcc[i]])
+        continue
+    else:
+        filewriter.writerow([timeaxis[i], Axis3FinalPos[i], Axis3FinalSpeed[i], Axis3FinalAcc[i]])
 
 
 
+print(np.diff(timeaxis))
 
