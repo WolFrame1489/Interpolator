@@ -26,7 +26,7 @@ if __name__ == "__main__":
     JointPoints = []
     CurrentPos = [0.1, 10.0, 0.0, 1] # начальная позиция робота
     filename = 'testtraj.cpt'
-    gcodeFileName = 'triangle.txt'
+    gcodeFileName = 'triangle.txt' #TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
     print('Linearizing...')
     print('getcwd:      ', os.getcwd())
     os.system('python pygcode-norm.py  -al -alp 0.1 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
