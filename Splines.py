@@ -91,6 +91,9 @@ def CreateNURBSCurve(filename, pos, NumberOfPoints):
     # curve.evaluate()
     # Plot the control point polygon and the evaluated curve
     return points_a
+def EvalAccuracy(pointsOld, pointsNew):
+    print('EvalAcc')
+    return cdist(pointsOld, pointsNew)
 def OptimizeNURBS(points):
     x = []
     y = []

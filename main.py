@@ -14,8 +14,8 @@ import csv
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
-    Jmax = 60000000.5
-    Amax = 60000000.5
+    Jmax = 600000.5
+    Amax = 600000.5
     Vmax = 10.5
     Vmove = 0.005
     PosCycleTime = 0.000001 # время такта контура позиции
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     JointPoints = []
     CurrentPos = [0.1, 10.0, 0.0, 1] # начальная позиция робота
     filename = 'testtraj.cpt'
-    gcodeFileName = 'triangle.txt' #TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
+    gcodeFileName = 'prg1.txt' #TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
     print('Linearizing...')
     print('getcwd:      ', os.getcwd())
     os.system('python pygcode-norm.py  -al -alp 0.1 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
@@ -42,7 +42,7 @@ if __name__ == "__main__":
         i+=1
     SumTime = sum(times)
     print(SumTime, times)
-    PointsAmount = math.ceil(SumTime * 5000) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
+    PointsAmount = math.ceil((SumTime) * len(times) * 10) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
     CartesianPoints = []
     deviation = 30
     print('Starting lirear interp....')
@@ -265,6 +265,8 @@ if __name__ == "__main__":
                 Vq1 = []
                 T = np.delete(T, i)
                 q1 = np.delete(q1, i)
+                q2 = np.delete(q2, i)
+                q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
                 # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
                 u = 3
@@ -293,6 +295,8 @@ if __name__ == "__main__":
 
                 T = np.delete(T, i)
                 q1 = np.delete(q1, i)
+                q2 = np.delete(q2, i)
+                q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
                 # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
                 knots = BSplines[0][0]
@@ -321,7 +325,9 @@ if __name__ == "__main__":
                 Vq2 = []
                 s *= 7.3
                 T = np.delete(T, i)
+                q1 = np.delete(q1, i)
                 q2 = np.delete(q2, i)
+                q3 = np.delete(q3, i)
                 # print(len(T), len(q2))
                 BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
                 axis2tck = BSplines[1]
@@ -348,7 +354,9 @@ if __name__ == "__main__":
                 Vq2 = []
                 s *= 7.3
                 T = np.delete(T, i)
+                q1 = np.delete(q1, i)
                 q2 = np.delete(q2, i)
+                q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
                 axis2tck = BSplines[1]
                 # Coefficients[1] = PPoly.from_spline(BSplines[1]).c
@@ -378,6 +386,8 @@ if __name__ == "__main__":
                 Aq3 = []
                 Vq3 = []
                 T = np.delete(T, i)
+                q1 = np.delete(q1, i)
+                q2 = np.delete(q2, i)
                 q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
                 axis3tck = BSplines[2]
@@ -404,6 +414,8 @@ if __name__ == "__main__":
                 Vq3 = []
                 s *= 7.3
                 T = np.delete(T, i)
+                q1 = np.delete(q1, i)
+                q2 = np.delete(q2, i)
                 q3 = np.delete(q3, i)
                 BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
                 axis3tck = BSplines[2]
@@ -423,6 +435,8 @@ if __name__ == "__main__":
             print('q3 fit error', e)
             i += 1
        # knots = utilities.generate_knot_vector(5, len(q3))
+outputpoints = []
+
 
 q1der = np.array([[q1[i], Vq1[i], Aq1[i], Jq1[i]] for i in range(min(len(q1), len(Vq1), len(Aq1)))], dtype=object)
 q2der = np.array([[q2[i], Vq2[i], Aq2[i], Jq2[i]] for i in range(min(len(q2), len(Vq2), len(Aq2)))], dtype=object)
