@@ -14,6 +14,10 @@ import csv
 import matplotlib.pyplot as plt
 if __name__ == "__main__":
     x = []
+    DeltaRF = 1120.0
+    DeltaRE = 2320.0
+    DeltaF = 4570.0
+    DeltaE = 1150.0
     Jmax = 600000.5
     Amax = 600000.5
     Vmax = 10.5
@@ -24,9 +28,15 @@ if __name__ == "__main__":
     y = []
     realy = []
     JointPoints = []
-    CurrentPos = [0.1, 10.0, 0.0, 1] # начальная позиция робота
+    CurrentPos = [0.1, 10.0, 0.1, 1] # начальная позиция робота
+    Kinematics = 'DELTA'
+
+
+
+
+
     filename = 'testtraj.cpt'
-    gcodeFileName = 'prg1.txt' #TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
+    gcodeFileName = 'square.txt' #TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
     print('Linearizing...')
     print('getcwd:      ', os.getcwd())
     os.system('python pygcode-norm.py  -al -alp 0.1 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName)) #линеаризуем файл
@@ -34,6 +44,9 @@ if __name__ == "__main__":
     HandleGCode('coderework.txt', CurrentPos, Vmax) # делаем точки из ж кода и выдаем им веса
     times = [] # список ля хранения времен, необходимых на каждое движение
     i = 0
+
+
+
     print(GCodeHandler.MoveList)
     while i < len(GCodeHandler.MoveList):
         print(GCodeHandler.MoveList[i].time)
@@ -45,6 +58,10 @@ if __name__ == "__main__":
     PointsAmount = math.ceil((SumTime) * len(times) * 10) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
     CartesianPoints = []
     deviation = 30
+
+
+
+
     print('Starting lirear interp....')
     CartesianPoints = CreateNURBSCurve('testtraj.cpt', CurrentPos, PointsAmount) # делаем линейную интерполяцию в координатах мира
     IdealpointsX = []
@@ -56,6 +73,9 @@ if __name__ == "__main__":
         IdealpointsZ.append(CartesianPoints[i][2])
     import plotly.express as px
 
+
+
+
     fig = px.scatter(x=IdealpointsX, y=IdealpointsY, title="BSPLINETEST")
     fig.show()
     print('geomdl finished...')
@@ -66,10 +86,15 @@ if __name__ == "__main__":
     Vmaxq1 = 2.0
     Vmaxq2 = 1.7
     Vmaxq3 = 1.0
+
+
+
+
+
     CartesianPoints = []
     for i in range(len(OptimizedPoints[0])):
         CartesianPoints.append([OptimizedPoints[0][i], OptimizedPoints[1][i], OptimizedPoints[2][i]])
-    JointPoints = InvKins(CartesianPoints, 175, 275, 100, Limits, 'TRIV') # делаем ОЗК по полученным точкам
+    JointPoints = InvKins(CartesianPoints, 175, 275, 100, Limits, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF) # делаем ОЗК по полученным точкам
     x = []
     y = []
     q1 = []
@@ -84,12 +109,20 @@ if __name__ == "__main__":
             q3.append(JointPoints[i][2])
 
 
+
+
+
     # массивы координат каждой оси
     q1 = np.array(q1)
     q2 = np.array(q2)
     q3 = np.array(q3)
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
     print(T[-1])
+
+
+
+
+
 
 # создаем идеальные сплайны по 3 осям
     BSplines = PrepareBSpline(q1, q2, q3, T, 1, 1.1)
@@ -108,6 +141,11 @@ if __name__ == "__main__":
     knots3 = BSplines[2][0]
     Coefficients.append(PPoly.from_spline(BSplines[2]).c)
     print(len(knots1), len(knots2), len(knots3))
+
+
+
+
+
     u = 3
     # скорости осей
     Vq1 = []
@@ -134,6 +172,13 @@ if __name__ == "__main__":
     Az = []
     testx = []
     knots = T
+
+
+
+
+
+
+
     print('Creating polynome splines of speed etc...')
     i = 0
     BSplines = PrepareBSpline(q1, q2, q3, T, 1, 5.1)
@@ -154,6 +199,13 @@ if __name__ == "__main__":
         Vq3.append(t3[i][1])
         Aq3.append(t3[i][2])
         Jq3.append(t3[i][3])
+
+
+
+
+
+
+
     # while (u < (len(knots)) - 4):
     #    Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4))+ (4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
     #               + (3 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 2)) \
@@ -187,6 +239,13 @@ if __name__ == "__main__":
     #                       6 * Coefficients[2][2][u]))
     #    u += 1
     i = 3
+
+
+
+
+
+
+
     #print(Vq1)
     testV = Vq1
     testA = Aq1
@@ -199,7 +258,7 @@ if __name__ == "__main__":
     realspeed[0].append(0)
     realspeed[1].append(0)
     realspeed[2].append(0)
-    temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275, 'TRIV')
+    temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
     realspeed[0] = temp[0]
     realspeed[1] = temp[1]
     realspeed[2] = temp[2]
@@ -248,6 +307,14 @@ if __name__ == "__main__":
     #     Jq3.append(temp[i][3])
     # print('LEN VQ', len(Vq1), len(Vq2), len(Vq3))
     #exit(0)
+
+
+
+
+
+
+
+
     print('Starting spline fitting...')
     s = 0.0
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
@@ -438,9 +505,27 @@ if __name__ == "__main__":
 outputpoints = []
 
 
+
+
+
+
+
+
+
+
+
 q1der = np.array([[q1[i], Vq1[i], Aq1[i], Jq1[i]] for i in range(min(len(q1), len(Vq1), len(Aq1)))], dtype=object)
 q2der = np.array([[q2[i], Vq2[i], Aq2[i], Jq2[i]] for i in range(min(len(q2), len(Vq2), len(Aq2)))], dtype=object)
 q3der = np.array([[q3[i], Vq3[i], Aq3[i], Jq3[i]] for i in range(min(len(q3), len(Vq3), len(Aq3)))], dtype=object)
+
+
+
+
+
+
+
+
+
 
 if q1der[0][1] > 0:
     q1der[0] = [q1[0], 0, 0, Jmax]
@@ -450,6 +535,15 @@ if q1der[-1][1] > 0:
     q1der[-1] = [q1[-1], 0, 0, -Jmax]
 else:
     q1der[-1] = [q1[-1], 0, 0, Jmax]
+
+
+
+
+
+
+
+
+
 realspeed =[]
 realspeed.append([])
 realspeed.append([])
@@ -464,16 +558,35 @@ realpoints.append([])
 realpoints[0].append(CurrentPos[0])
 realpoints[1].append(CurrentPos[1])
 realpoints[2].append(CurrentPos[2])
+
+
+
+
+
+
+
+
+
 # по пзк получаем траекторию инструмента
 for i in range((min(len(q1), len(q2), len(q3)))):
-    realpoints[0].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[0])
-    realpoints[1].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[1])
-    realpoints[2].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, 'TRIV'))[2])
+    realpoints[0].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[0])
+    realpoints[1].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[1])
+    realpoints[2].append((ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[2])
 print(realpoints)
-for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
-     realspeed[0].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, 'TRIV'))[0])
-     realspeed[1].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, 'TRIV'))[1])
-     realspeed[2].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, 'TRIV'))[2])
+# for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
+#      realspeed[0].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[0])
+#      realspeed[1].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[1])
+#      realspeed[2].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[2])
+
+
+
+
+
+
+
+
+
+
 # realspeed[0] = np.array(realpoints[0])
 # realspeed[1] = np.array(realpoints[1])
 # realspeed[2] = np.array(realpoints[2])
@@ -487,6 +600,12 @@ for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
 #print(realspeed)
 x = np.arange(0, len(realspeed[0]), 1)
 x1 = np.arange(0, len(realspeed[1]), 1)
+
+
+
+
+
+
 
 
 
@@ -627,6 +746,20 @@ x1 = np.arange(0, len(realspeed[1]), 1)
 # print(realspeed)
 # x = np.arange(0, len(realspeed[0]), 1)
 # x1 = np.arange(0, len(realspeed[1]), 1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 vp = []
 j1 = []
 realspeed =[]
@@ -636,7 +769,7 @@ realspeed.append([])
 realspeed[0].append(0)
 realspeed[1].append(0)
 realspeed[2].append(0)
-temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275, 'TRIV')
+temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
 realspeed[0] = temp[0]
 realspeed[1] = temp[1]
 realspeed[2] = temp[2]
@@ -762,15 +895,9 @@ Axis1FinalSpeed = testspline(timeaxis, 1)
 Axis1FinalAcc = testspline(timeaxis, 2)
 fig = px.scatter(x=timeaxis, y=Axis1FinalSpeed, title='Axis 1 speed')
 fig.show()
-file = open('axis1res.csv', 'w')
-filewriter = csv.writer(file, delimiter=';', lineterminator="\r")
+file = open('axis1res.txt', 'w')
 for i in range(len(timeaxis)):
-    if i == 0:
-        filewriter.writerow(['time', 'position', 'speed', 'acc'])
-        filewriter.writerow([timeaxis[i], Axis1FinalPos[i], Axis1FinalSpeed[i], Axis1FinalAcc[i]])
-        continue
-    else:
-        filewriter.writerow([timeaxis[i], Axis1FinalPos[i], Axis1FinalSpeed[i], Axis1FinalAcc[i]])
+    file.write(str(timeaxis[i]) + str(Axis1FinalPos[i]) + str(Axis1FinalSpeed[i]) + str(Axis1FinalAcc[i]) + ';' + '\n')
 
 tempspline = BSpline(axis2tck[0], axis2tck[1], 5)
 testspline = tempspline.construct_fast(axis2tck[0], axis2tck[1], axis2tck[2])
@@ -781,15 +908,14 @@ Axis2FinalAcc = testspline(timeaxis, 2)
 fig = px.scatter(x=timeaxis, y=Axis2FinalSpeed, title='Axis 2 speed')
 fig.show()
 
-file = open('axis2res.csv', 'w')
-filewriter = csv.writer(file, delimiter=';', lineterminator="\r")
+
+
+file = open('axis2res.txt', 'w')
 for i in range(len(timeaxis)):
-    if i == 0:
-        filewriter.writerow(['time', 'position', 'speed', 'acc'])
-        filewriter.writerow([timeaxis[i], Axis2FinalPos[i], Axis2FinalSpeed[i], Axis2FinalAcc[i]])
-        continue
-    else:
-        filewriter.writerow([timeaxis[i], Axis2FinalPos[i], Axis2FinalSpeed[i], Axis2FinalAcc[i]])
+    file.write(str(timeaxis[i]) + str(Axis2FinalPos[i]) + str(Axis2FinalSpeed[i]) + str(Axis2FinalAcc[i]) + ';' + '\n')
+
+
+
 
 tempspline = BSpline(axis3tck[0], axis3tck[1], 5)
 testspline = tempspline.construct_fast(axis3tck[0], axis3tck[1], axis3tck[2])
@@ -801,15 +927,12 @@ fig = px.scatter(x=timeaxis, y=Axis3FinalSpeed, title='Axis 3 speed')
 fig.show()
 
 
-file = open('axis3res.csv', 'w')
-filewriter = csv.writer(file, delimiter=';', lineterminator="\r")
+
+
+
+file = open('axis3res.txt', 'w')
 for i in range(len(timeaxis)):
-    if i == 0:
-        filewriter.writerow(['time', 'position', 'speed', 'acc'])
-        filewriter.writerow([timeaxis[i], Axis3FinalPos[i], Axis3FinalSpeed[i], Axis3FinalAcc[i]])
-        continue
-    else:
-        filewriter.writerow([timeaxis[i], Axis3FinalPos[i], Axis3FinalSpeed[i], Axis3FinalAcc[i]])
+    file.write(str(timeaxis[i]) + str(Axis3FinalPos[i]) + str(Axis3FinalSpeed[i]) + str(Axis3FinalAcc[i]) + ';' + '\n')
 
 
 
