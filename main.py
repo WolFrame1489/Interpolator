@@ -22,7 +22,7 @@ if __name__ == "__main__":
     Amax = 600000.5
     Vmax = 10.5
     Vmove = 0.005
-    PosCycleTime = 0.000001 # время такта контура позиции
+    PosCycleTime = 0.000400 # время такта контура позиции
     GCodeHandler.weight = 1.0 # вес начальной точки
     realx = []
     y = []
@@ -897,7 +897,7 @@ fig = px.scatter(x=timeaxis, y=Axis1FinalSpeed, title='Axis 1 speed')
 fig.show()
 file = open('axis1res.txt', 'w')
 for i in range(len(timeaxis)):
-    file.write(str(timeaxis[i]) + str(Axis1FinalPos[i]) + str(Axis1FinalSpeed[i]) + str(Axis1FinalAcc[i]) + ';' + '\n')
+    file.write(str(timeaxis[i]) + ';' + str(Axis1FinalPos[i]) + ';'  + str(Axis1FinalSpeed[i]) + ';'  + str(Axis1FinalAcc[i]) + ';' + '\n')
 
 tempspline = BSpline(axis2tck[0], axis2tck[1], 5)
 testspline = tempspline.construct_fast(axis2tck[0], axis2tck[1], axis2tck[2])
@@ -912,7 +912,7 @@ fig.show()
 
 file = open('axis2res.txt', 'w')
 for i in range(len(timeaxis)):
-    file.write(str(timeaxis[i]) + str(Axis2FinalPos[i]) + str(Axis2FinalSpeed[i]) + str(Axis2FinalAcc[i]) + ';' + '\n')
+    file.write(str(timeaxis[i]) + ';'  + str(Axis2FinalPos[i]) + ';'  + str(Axis2FinalSpeed[i]) + ';'  + str(Axis2FinalAcc[i]) + ';' + '\n')
 
 
 
@@ -932,7 +932,7 @@ fig.show()
 
 file = open('axis3res.txt', 'w')
 for i in range(len(timeaxis)):
-    file.write(str(timeaxis[i]) + str(Axis3FinalPos[i]) + str(Axis3FinalSpeed[i]) + str(Axis3FinalAcc[i]) + ';' + '\n')
+    file.write(str(timeaxis[i]) + ';'  + str(Axis3FinalPos[i]) + ';'  + str(Axis3FinalSpeed[i]) + ';'  + str(Axis3FinalAcc[i]) + ';' + '\n')
 
 
 
