@@ -19,6 +19,10 @@ def planTime(times, spline, Movements: list, Amax, splineaxis): #осейвой 
             dt = math.sqrt(sqeuclidean([spline[i][0], spline[i][1], spline[i][2]], [spline[i-1][0], spline[i-1][1], spline[i-1][2]])) / (
                        Movements[Counter].speed)
             T[i] = T[i - 1] + dt
+            print('DT = ',dt)
+            if T[i] == T[i - 1] or dt == 0:
+                print('dt = 0!')
+                raise ValueError
             #print('T[i]', T[i], Currenttime + Movements[Counter].time, i, dt)
             if (T[i] >= (Currenttime + Movements[Counter].time)):
                 if Counter < (len(Movements) - 1):
@@ -28,7 +32,7 @@ def planTime(times, spline, Movements: list, Amax, splineaxis): #осейвой 
                                      [spline[i + 1][0], spline[i + 1][1], spline[i + 1][2]])) / (
                                      Movements[Counter + 1].speed)
                     Counter += 1
-                    T[i + 1] = Currenttime
+                    T[i + 1] = T[i] + dt
                     if i == (len(splineaxis) - 2):
                         i += 1
                     else:
@@ -40,7 +44,7 @@ def planTime(times, spline, Movements: list, Amax, splineaxis): #осейвой 
                     dt = math.sqrt(sqeuclidean([spline[i][0], spline[i][1], spline[i][2]],
                                      [spline[i + 1][0], spline[i + 1][1], spline[i + 1][2]])) / (
                                      Movements[Counter].speed)
-                    T[i + 1] = Currenttime
+                    T[i + 1] = T[i] + dt
                     if i == (len(splineaxis) - 2):
                         i += 1
                     else:

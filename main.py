@@ -18,8 +18,8 @@ if __name__ == "__main__":
     DeltaRE = 2320.0
     DeltaF = 4570.0
     DeltaE = 1150.0
-    Jmax = 600000.5
-    Amax = 600000.5
+    Jmax = 600000000.5
+    Amax = 600000000.5
     Vmax = 10.5
     Vmove = 0.005
     PosCycleTime = 0.000400 # время такта контура позиции
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     realy = []
     JointPoints = []
     CurrentPos = [0.1, 10.0, 0.1, 1] # начальная позиция робота
-    Kinematics = 'DELTA'
+    Kinematics = 'TRIV'
 
 
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         i+=1
     SumTime = sum(times)
     print(SumTime, times)
-    PointsAmount = math.ceil((SumTime) * len(times) * 10) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
+    PointsAmount = math.ceil((SumTime) * len(times) * 8000) # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
     CartesianPoints = []
     deviation = 30
 
@@ -116,6 +116,20 @@ if __name__ == "__main__":
     q1 = np.array(q1)
     q2 = np.array(q2)
     q3 = np.array(q3)
+    # while (i < len(q1) - 1):
+    #     if q1[i] == q1[i + 1]:
+    #         q1 = np.delete(q1, i + 1)
+    #         q2 = np.delete(q2, i + 1)
+    #         q3 = np.delete(q3, i + 1)
+    #     if q2[i] == q2[i + 1]:
+    #         q1 = np.delete(q1, i + 1)
+    #         q2 = np.delete(q2, i + 1)
+    #         q3 = np.delete(q3, i + 1)
+    #     if q3[i] == q3[i + 1]:
+    #         q1 = np.delete(q1, i + 1)
+    #         q2 = np.delete(q2, i + 1)
+    #         q3 = np.delete(q3, i + 1)
+
     T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
     print(T[-1])
 
@@ -178,7 +192,6 @@ if __name__ == "__main__":
 
 
 
-
     print('Creating polynome splines of speed etc...')
     i = 0
     BSplines = PrepareBSpline(q1, q2, q3, T, 1, 5.1)
@@ -187,6 +200,10 @@ if __name__ == "__main__":
         Vq1.append(t1[i][1])
         Aq1.append(t1[i][2])
         Jq1.append(t1[i][3])
+    if np.isnan(Vq1[0]):
+        print(T)
+        print(Vq1)
+        exit(0)
     BSplines = PrepareBSpline(q1, q2, q3, T, 2, 5.1)
     t2 = spalde(T, BSplines[1])
     for i in range(len(q2) - 2):
@@ -527,14 +544,14 @@ q3der = np.array([[q3[i], Vq3[i], Aq3[i], Jq3[i]] for i in range(min(len(q3), le
 
 
 
-if q1der[0][1] > 0:
-    q1der[0] = [q1[0], 0, 0, Jmax]
-else:
-    q1der[0] = [q1[0], 0, 0, -Jmax]
-if q1der[-1][1] > 0:
-    q1der[-1] = [q1[-1], 0, 0, -Jmax]
-else:
-    q1der[-1] = [q1[-1], 0, 0, Jmax]
+# if q1der[0][1] > 0:
+#     q1der[0] = [q1[0], 0, 0, Jmax]
+# else:
+#     q1der[0] = [q1[0], 0, 0, -Jmax]
+# if q1der[-1][1] > 0:
+#     q1der[-1] = [q1[-1], 0, 0, -Jmax]
+# else:
+#     q1der[-1] = [q1[-1], 0, 0, Jmax]
 
 
 
@@ -844,8 +861,8 @@ while len(T) > len(vp):
 fig = px.scatter(x=np.arange(0,len(vp), 1), y=vp)
 fig.show()
 #fig = go.Figure(data=[go.Scatter(x=T, y=BVq1), go.Scatter(x=T, y=BVq2), go.Scatter(x=T, y=BVq3)])
-T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
-fig = px.scatter(x=T, y=Vq1, title='Axis 1 speed')
+T = planTime(times, CartesianPoints, MoveList, Jmax, q1)
+fig = px.scatter(x=T, y=q1, title='Axis 2 position')
 fig.show()
 T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1)
 fig = go.Figure(data=[go.Scatter(x=T, y=realspeed[0], name='Tool X Speed'), go.Scatter(x=T, y=realspeed[1], name='Tool Y Speed'), go.Scatter(x=T, y=realspeed[2], name='Tool Z Speed')])
@@ -895,9 +912,12 @@ Axis1FinalSpeed = testspline(timeaxis, 1)
 Axis1FinalAcc = testspline(timeaxis, 2)
 fig = px.scatter(x=timeaxis, y=Axis1FinalSpeed, title='Axis 1 speed')
 fig.show()
-file = open('axis1res.txt', 'w')
+file = open('axis1res.bin', 'wb')
 for i in range(len(timeaxis)):
-    file.write(str(timeaxis[i]) + ';' + str(Axis1FinalPos[i]) + ';'  + str(Axis1FinalSpeed[i]) + ';'  + str(Axis1FinalAcc[i]) + ';' + '\n')
+    file.write(bytearray(np.float32(Axis1FinalSpeed[i] * 10)))
+file.close()
+#for i in range(len(timeaxis)):
+ #   file.write(str(timeaxis[i]) + ';' + str(Axis1FinalPos[i]) + ';'  + str(Axis1FinalSpeed[i]) + ';'  + str(Axis1FinalAcc[i]) + ';' + '\n')
 
 tempspline = BSpline(axis2tck[0], axis2tck[1], 5)
 testspline = tempspline.construct_fast(axis2tck[0], axis2tck[1], axis2tck[2])
@@ -910,9 +930,10 @@ fig.show()
 
 
 
-file = open('axis2res.txt', 'w')
+file = open('axis2res.bin', 'wb')
 for i in range(len(timeaxis)):
-    file.write(str(timeaxis[i]) + ';'  + str(Axis2FinalPos[i]) + ';'  + str(Axis2FinalSpeed[i]) + ';'  + str(Axis2FinalAcc[i]) + ';' + '\n')
+    file.write(bytearray(np.float32(Axis2FinalSpeed[i] / 10)))
+file.close()
 
 
 
@@ -928,11 +949,15 @@ fig.show()
 
 
 
-
-
-file = open('axis3res.txt', 'w')
+file = open('axis3res.bin', 'wb')
 for i in range(len(timeaxis)):
-    file.write(str(timeaxis[i]) + ';'  + str(Axis3FinalPos[i]) + ';'  + str(Axis3FinalSpeed[i]) + ';'  + str(Axis3FinalAcc[i]) + ';' + '\n')
+    file.write(bytearray(np.float32(Axis3FinalSpeed[i] * 100)))
+file.close()
+
+
+
+
+
 
 
 
