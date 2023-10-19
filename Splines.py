@@ -109,7 +109,7 @@ def OptimizeNURBS(points):
     b.append(x)
     b.append(y)
     b.append(z)
-    res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=1.1, t=None, full_output=0, nest=None, per=0, quiet=1)
+    res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=0.1, t=None, full_output=0, nest=None, per=0, quiet=1)
     res = splev(res[1], res[0])
     ideal = []
     for i in range(len(res)):
@@ -127,7 +127,7 @@ def OptimizeNURBS(points):
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
         if (rang[j][0] < 0.0000005) and (rang[j][1] < 0.0000005) and (rang[j][2] < 0.0000005):
-            smoothing *= 1.5
+            smoothing *= 1.1
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
             res = splev(res[1], res[0])
@@ -153,6 +153,8 @@ def PrepareBSpline(q1, q2, q3, T, axis, smoothing):
     q3tck = tuple()
     if (axis == 1):
         print('spline', len(T), len(q1))
+        if len(T) > len(q1):
+            T = np.delete(T, -1)
         q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
     elif (axis == 2):
         print('spline', len(T), len(q2))
