@@ -14,8 +14,12 @@ from geomdl.visualization import VisMPL
 from geomdl.visualization import VisPlotly
 from geomdl import knotvector
 import random
-from scipy.interpolate import splrep, splev, splder, splprep, make_interp_spline, interp1d, BSpline, PPoly, BSpline, spalde
+from scipy.interpolate import splrep, splev, splder, splprep, InterpolatedUnivariateSpline, interp1d, LSQUnivariateSpline, UnivariateSpline
 from scipy.spatial.distance import cdist, sqeuclidean
+
+import TimeFeedratePlan
+
+
 def CreateNURBSCurve(filename, pos, NumberOfPoints):
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     # Create a NURBS curve instance (full circle)
@@ -109,7 +113,7 @@ def OptimizeNURBS(points):
     b.append(x)
     b.append(y)
     b.append(z)
-    res = splprep(b, w=None, u=None, ub=None, ue=None, k=4, task=0, s=0.1, t=None, full_output=0, nest=None, per=0, quiet=1)
+    res = splprep(b, w=None, u=None, ub=None, ue=None, k=1, task=0, s=0.1, t=None, full_output=0, nest=None, per=0, quiet=1)
     res = splev(res[1], res[0])
     ideal = []
     for i in range(len(res)):
@@ -145,65 +149,99 @@ def OptimizeNURBS(points):
     print('Error', rang[-1])
     return res
 
-def PrepareBSpline(q1, q2, q3, T, axis, smoothing):
+def PrepareBSpline(q1, q2, q3, T, axis, smoothing, *args, **kwargs):
     t = np.arange(0, 1, 1/len(q2))
     result = []
+    s1 = []
+    s2 = []
+    s3 = []
     q1tck = tuple()
     q2tck = tuple()
     q3tck = tuple()
+    w = kwargs.get('w')
+    ideal = kwargs.get('ideal')
     if (axis == 1):
+        knots = np.linspace(50, 100, 10)
         print('spline', len(T), len(q1))
-        if len(T) > len(q1):
-            T = np.delete(T, -1)
-        q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
+        print(TimeFeedratePlan.indexes)
+        w = np.ones(len(q1))
+        for i in range(len(TimeFeedratePlan.indexes)):
+            w[i] = 0.1
+        if ideal:
+           s1 = InterpolatedUnivariateSpline(T, q1, k=5)
+        else:
+            s1 = UnivariateSpline(T, q1, s=0.05, k=5, w=w)
+        #q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=0, t=None, full_output=0, per=0, quiet=1)
+        #q1tck = splrep(T, q1, w=w, xb=None, xe=None, k=5, task=0, s=0, t=q1tck[0][-4:4], full_output=0, per=0, quiet=1)
     elif (axis == 2):
+        w = np.ones(len(q2))
+        for i in range(len(TimeFeedratePlan.indexes)):
+            w[i] = 0.5
+        knots = np.linspace(50, 100, 10)
         print('spline', len(T), len(q2))
-        q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
+        #q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=5, task=0, s=0, t=None, full_output=0, per=0, quiet=1)
+        #q2tck = splrep(T, q2, w=w, xb=None, xe=None, k=5, task=0, s=0, t=q2tck[0][-4:4], full_output=0, per=0, quiet=1)
+        s2 = UnivariateSpline(T, q2, s=0.05, k=5, w=w)
     else:
-        print('spline', len(T), len(q2))
-        q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=5, task=0, s=smoothing, t=None, full_output=0, per=0, quiet=1)
-    result.append(q1tck)
-    result.append(q2tck)
-    result.append(q3tck)
+        w = np.ones(len(q2))
+        for i in range(len(TimeFeedratePlan.indexes)):
+            w[i] = 0.1
+        knots = np.linspace(50, 100, 10)
+        print('spline', len(T), len(q3))
+        #q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=5, task=0, s=0, t=None, full_output=0, per=0, quiet=1)
+        #q3tck = splrep(T, q3, w=w, xb=None, xe=None, k=5, task=0, s=0, t=q3tck[0][-4:4], full_output=0, per=0, quiet=1)
+        s3 = UnivariateSpline(T, q3, s=0.05, k=5, w=w)
+    result.append(s1)
+    result.append(s2)
+    result.append(s3)
     return result
-def RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, axis):
-    u = 3
-    while (u < (len(knots) - 3)):
-        if (axis == 1):
-            Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4)) + (
-                    4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
-                       + (3 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 2)) \
-                       + (2 * Coefficients[0][3][u] * ((knots[u] / len(knots)))) + (Coefficients[0][4][u]))
-            Aq1.append((20 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 3)) + (
-                    12 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 2)) + (
-                               6 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 1)) \
-                       + (2 * Coefficients[0][3][u]))
-            Jq1.append((60 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 2)) + (
-                    24 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 1)) + (
-                               6 * Coefficients[0][2][u]))
-        if (axis == 2):
-            Vq1.append((5 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 4)) + (
-                    4 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 3)) \
-                       + (3 * Coefficients[1][2][u] * ((knots[u] / len(knots)) ** 2)) \
-                       + (2 * Coefficients[1][3][u] * ((knots[u] / len(knots)))) + (Coefficients[1][4][u]))
-            Aq1.append((20 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 3)) + (
-                    12 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 2)) + (
-                               6 * Coefficients[1][2][u] * ((knots[u] / len(knots)) ** 1)) \
-                       + (2 * Coefficients[1][3][u]))
-            Jq1.append((60 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 2)) + (
-                    24 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 1)) + (
-                               6 * Coefficients[1][2][u]))
-        if (axis == 3):
-            Vq1.append((5 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 4)) + (
-                    4 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 3)) \
-                       + (3 * Coefficients[2][2][u] * ((knots[u] / len(knots)) ** 2)) \
-                       + (2 * Coefficients[2][3][u] * ((knots[u] / len(knots)))) + (Coefficients[2][4][u]))
-            Aq1.append((20 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 3)) + (
-                    12 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 2)) + (
-                               6 * Coefficients[2][2][u] * ((knots[u] / len(knots)) ** 1)) \
-                       + (2 * Coefficients[2][3][u]))
-            Jq1.append((60 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 2)) + (
-                    24 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 1)) + (
-                               6 * Coefficients[2][2][u]))
-        u += 1
-    return list([Vq1, Aq1, Jq1])
+def RebuildSpline(x, y, z, T, axis, smoothing, *args, **kwargs):
+    w = kwargs.get('w')
+    knots = np.linspace(T[0], T[-1], 1000)
+    s1 = LSQUnivariateSpline(T, x, t=knots, w=w, k=5)
+    s2 = LSQUnivariateSpline(T, y, t=knots, w=w, k=5)
+    s3 = LSQUnivariateSpline(T, z, t=knots, w=w, k=5)
+
+
+
+
+
+    # while (u < (len(knots) - 3)):
+    #     if (axis == 1):
+    #         Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4)) + (
+    #                 4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
+    #                    + (3 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 2)) \
+    #                    + (2 * Coefficients[0][3][u] * ((knots[u] / len(knots)))) + (Coefficients[0][4][u]))
+    #         Aq1.append((20 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 3)) + (
+    #                 12 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                            6 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 1)) \
+    #                    + (2 * Coefficients[0][3][u]))
+    #         Jq1.append((60 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                 24 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 1)) + (
+    #                            6 * Coefficients[0][2][u]))
+    #     if (axis == 2):
+    #         Vq1.append((5 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 4)) + (
+    #                 4 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 3)) \
+    #                    + (3 * Coefficients[1][2][u] * ((knots[u] / len(knots)) ** 2)) \
+    #                    + (2 * Coefficients[1][3][u] * ((knots[u] / len(knots)))) + (Coefficients[1][4][u]))
+    #         Aq1.append((20 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 3)) + (
+    #                 12 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                            6 * Coefficients[1][2][u] * ((knots[u] / len(knots)) ** 1)) \
+    #                    + (2 * Coefficients[1][3][u]))
+    #         Jq1.append((60 * Coefficients[1][0][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                 24 * Coefficients[1][1][u] * ((knots[u] / len(knots)) ** 1)) + (
+    #                            6 * Coefficients[1][2][u]))
+    #     if (axis == 3):
+    #         Vq1.append((5 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 4)) + (
+    #                 4 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 3)) \
+    #                    + (3 * Coefficients[2][2][u] * ((knots[u] / len(knots)) ** 2)) \
+    #                    + (2 * Coefficients[2][3][u] * ((knots[u] / len(knots)))) + (Coefficients[2][4][u]))
+    #         Aq1.append((20 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 3)) + (
+    #                 12 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                            6 * Coefficients[2][2][u] * ((knots[u] / len(knots)) ** 1)) \
+    #                    + (2 * Coefficients[2][3][u]))
+    #         Jq1.append((60 * Coefficients[2][0][u] * ((knots[u] / len(knots)) ** 2)) + (
+    #                 24 * Coefficients[2][1][u] * ((knots[u] / len(knots)) ** 1)) + (
+    #                            6 * Coefficients[2][2][u]))
+    #     u += 1
+    # return list([Vq1, Aq1, Jq1])

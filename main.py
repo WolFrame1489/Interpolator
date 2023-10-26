@@ -8,7 +8,7 @@ from GCodeHandler import HandleGCode, weight, MoveList
 from Splines import CreateNURBSCurve, PrepareBSpline, RebuildSpline, OptimizeNURBS
 from TimeFeedratePlan import planTime
 from Kins import InvKins,ScaraInvKins2, ForwardKins, ForwardSpeedKins
-from scipy.interpolate import make_interp_spline, PPoly, BSpline, splprep, UnivariateSpline, spalde
+from scipy.interpolate import make_interp_spline, PPoly, BSpline, splprep, UnivariateSpline, spalde, splev
 import os
 import csv
 import matplotlib.pyplot as plt
@@ -52,8 +52,8 @@ if __name__ == "__main__":
        DeltaRE = 2320.0
        DeltaF = 4570.0
        DeltaE = 1150.0
-       Jmax = 600000.5
-       Amax = 600000.5
+       Jmax = 600000000.5
+       Amax = 600000000.5
        Vmax = 10.5
        Vmove = 0.005
        PosCycleTime = 0.000400  # время такта контура позиции
@@ -67,7 +67,7 @@ if __name__ == "__main__":
        else:
            CurrentPos = CartesianPoints[-1]
            CurrentPos.append(1)
-       Kinematics = 'TRIV'
+       Kinematics = 'DELTA'
 
        filename = 'testtraj.cpt'
        gcodeFileName = prg[segment]  # TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
@@ -89,7 +89,7 @@ if __name__ == "__main__":
        SumTime = sum(times)
        print(SumTime, times)
        PointsAmount = math.ceil(1 / (SumTime) * len(
-           times) * 8000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
+           times) * 1500)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
        CartesianPoints = []
        deviation = 30
 
@@ -139,6 +139,11 @@ if __name__ == "__main__":
        q1 = np.array(q1)
        q2 = np.array(q2)
        q3 = np.array(q3)
+       import plotly.graph_objects as go
+       import plotly.express as px
+
+       fig = px.scatter(x=q1, y=q2, title='SEX')
+       fig.show()
        # while (i < len(q1) - 1):
        #     if q1[i] == q1[i + 1]:
        #         q1 = np.delete(q1, i + 1)
@@ -157,23 +162,6 @@ if __name__ == "__main__":
 
 
        # создаем идеальные сплайны по 3 осям
-       BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.01)
-       axis1tck = BSplines[0]
-       testJ2 = spalde(T, BSplines[0])
-       knots = BSplines[0][0]
-       knots1 = BSplines[0][0]
-       Coefficients = []
-       Coefficients.append(PPoly.from_spline(BSplines[0]).c)
-       BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0.01)
-       axis2tck = BSplines[1]
-       knots2 = BSplines[1][0]
-       Coefficients.append(PPoly.from_spline(BSplines[1]).c)
-       BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.01)
-       axis3tck = BSplines[2]
-       knots3 = BSplines[2][0]
-       Coefficients.append(PPoly.from_spline(BSplines[2]).c)
-       print(len(knots1), len(knots2), len(knots3))
-
        u = 3
        # скорости осей
        Vq1 = []
@@ -203,29 +191,26 @@ if __name__ == "__main__":
 
        print('Creating polynome splines of speed etc...')
        i = 0
-       BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.01)
-       t1 = spalde(T, BSplines[0])
+       BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.0, ideal=True)
        for i in range(len(q1) - 2):
-           Vq1.append(t1[i][1])
-           Aq1.append(t1[i][2])
-           Jq1.append(t1[i][3])
+           Vq1.append(BSplines[0].derivatives(T[i])[1])
+           Aq1.append(BSplines[0].derivatives(T[i])[2])
+           Jq1.append(BSplines[0].derivatives(T[i])[3])
        if np.isnan(Vq1[0]):
            print(T)
            print(Vq1)
            exit(0)
-       BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0.01)
-       t2 = spalde(T, BSplines[1])
+       BSplines = PrepareBSpline(q1, q2, q3, T, 2, 0.0, ideal=True)
        for i in range(len(q2) - 2):
-           Vq2.append(t2[i][1])
-           Aq2.append(t2[i][2])
-           Jq2.append(t2[i][3])
-       BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.01)
-       t3 = spalde(T, BSplines[2])
+           Vq2.append(BSplines[1].derivatives(T[i])[1])
+           Aq2.append(BSplines[1].derivatives(T[i])[2])
+           Jq2.append(BSplines[1].derivatives(T[i])[3])
+       BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.0, ideal=True)
        for i in range(len(q3) - 2):
-           Vq3.append(t3[i][1])
-           Aq3.append(t3[i][2])
-           Jq3.append(t3[i][3])
-
+           Vq3.append(BSplines[2].derivatives(T[i])[1])
+           Aq3.append(BSplines[2].derivatives(T[i])[2])
+           Jq3.append(BSplines[2].derivatives(T[i])[3])
+       print('TESTING', len(Jq1), len(Jq2), len(Jq3))
        # while (u < (len(knots)) - 4):
        #    Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4))+ (4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
        #               + (3 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 2)) \
@@ -276,11 +261,6 @@ if __name__ == "__main__":
        realspeed[0] = temp[0]
        realspeed[1] = temp[1]
        realspeed[2] = temp[2]
-       import plotly.graph_objects as go
-       import plotly.express as px
-
-       fig = px.scatter(x=q1, y=q2)
-       fig.show()
        # for i in range(len(realspeed[2])):
        #     print(i)
        #     vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
@@ -325,34 +305,38 @@ if __name__ == "__main__":
        print('Starting spline fitting...')
        s = 0.0
        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
-       i = 0
+       i = 3
        s = 0.01
+       w1 = np.full(len(q1), fill_value=1000000)
+       w2 = w1
+       w3 = w1
        # здесь  начинаем подбирать коэф. сглаживания, чтобы траектория удовлетворяла ограничениям
        while i < (len(q1)):
            print(len(Jq1))
            try:
                if (abs(Jq1[i]) > (Jmax + 0.0001)):
                    print('jerk1', Jq1[i], i)
-                   s *= 1.3
+                   s *= 1.21
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   T = np.delete(T, i)
-                   q1 = np.delete(q1, i)
-                   q2 = np.delete(q2, i)
-                   q3 = np.delete(q3, i)
-                   BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
+                   w1[i] /= 1.0
+                   # T = np.delete(T, i)
+                   # q1 = np.delete(q1, i)
+                   # q2 = np.delete(q2, i)
+                   # q3 = np.delete(q3, i)
+                   BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
                    # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
                    u = 3
-                   knots = BSplines[0][0]
-                   axis1tck = BSplines[0]
+                   q1 = BSplines[0](T)
+                   print(q1)
                    # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
-                   t1 = spalde(T, BSplines[0])
-                   for i in range(len(q1) - 2):
-                       Vq1.append(t1[i][1])
-                       Aq1.append(t1[i][2])
-                       Jq1.append(t1[i][3])
-                   i = 0
+                   #t1 = spalde(T, BSplines[0])
+                   for i in range(len(q1)):
+                       Vq1.append(BSplines[0].derivatives(T[i])[1])
+                       Aq1.append(BSplines[0].derivatives(T[i])[2])
+                       Jq1.append(BSplines[0].derivatives(T[i])[3])
+                   i = 3
                    print(len(knots))
                else:
                    i += 1
@@ -362,25 +346,27 @@ if __name__ == "__main__":
            try:
                if (abs(Aq1[i]) > Amax):
                    print('accel1', Aq1[i], i)
-                   s *= 1.3
+                   s *= 1.01
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-
-                   T = np.delete(T, i)
-                   q1 = np.delete(q1, i)
-                   q2 = np.delete(q2, i)
-                   q3 = np.delete(q3, i)
-                   BSplines = PrepareBSpline(q1, q2, q3, T, 1, s)
+                   w1[i] /= 1.1
+                   # T = np.delete(T, i)
+                   # q1 = np.delete(q1, i)
+                   # q2 = np.delete(q2, i)
+                   # q3 = np.delete(q3, i)
+                   BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
                    # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
-                   knots = BSplines[0][0]
-                   axis1tck = BSplines[0]
+                   u = 3
+                   q1 = BSplines[0](T)
+                   print(q1)
+                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   #t1 = spalde(T, BSplines[0])
+                   for i in range(len(q1)):
+                       Vq1.append(BSplines[0].derivatives(T[i])[1])
+                       Aq1.append(BSplines[0].derivatives(T[i])[2])
+                       Jq1.append(BSplines[0].derivatives(T[i])[3])
                    i = 3
-                   t1 = spalde(T, BSplines[0])
-                   for i in range(len(q1) - 2):
-                       Vq1.append(t1[i][1])
-                       Aq1.append(t1[i][2])
-                       Jq1.append(t1[i][3])
                else:
                    i += 1
            except Exception as e:
@@ -388,7 +374,7 @@ if __name__ == "__main__":
                i += 1
        T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
        i = 1
-       s = 1
+       s = 0.1
        while i < (len(q2)):
            # knots = utilities.generate_knot_vector(5, len(q2))
            try:
@@ -397,24 +383,23 @@ if __name__ == "__main__":
                    Jq2 = []
                    Aq2 = []
                    Vq2 = []
-                   s *= 1.3
-                   T = np.delete(T, i)
-                   q1 = np.delete(q1, i)
-                   q2 = np.delete(q2, i)
-                   q3 = np.delete(q3, i)
-                   # print(len(T), len(q2))
-                   BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
-                   axis2tck = BSplines[1]
-                   # Coefficients[1] = PPoly.from_spline(BSplines[1]).c
-                   # u = 3
-                   # knots = BSplines[1][0]
-                   # res = RebuildSpline(Vq2, Aq2, Jq2, Coefficients, knots, 2)
-                   t2 = spalde(T, BSplines[1])
-                   for i in range(len(q2) - 2):
-                       Vq2.append(t2[i][1])
-                       Aq2.append(t2[i][2])
-                       Jq2.append(t2[i][3])
-                   i = 0
+                   s *= 1.01
+                   # T = np.delete(T, i)
+                   # q1 = np.delete(q1, i)
+                   # q2 = np.delete(q2, i)
+                   # q3 = np.delete(q3, i)
+                   print(len(T), len(q2))
+                   w2[i] /= 1.1
+                   BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
+                   q2 = BSplines[1](T)
+                   #print(q2)
+                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   #t1 = spalde(T, BSplines[0])
+                   for i in range(len(q2)):
+                       Vq2.append(BSplines[1].derivatives(T[i])[1])
+                       Aq2.append(BSplines[1].derivatives(T[i])[2])
+                       Jq2.append(BSplines[1].derivatives(T[i])[3])
+                   i = 3
                else:
                    i += 1
            except Exception as e:
@@ -426,22 +411,23 @@ if __name__ == "__main__":
                    Jq2 = []
                    Aq2 = []
                    Vq2 = []
-                   s *= 1.3
-                   T = np.delete(T, i)
-                   q1 = np.delete(q1, i)
-                   q2 = np.delete(q2, i)
-                   q3 = np.delete(q3, i)
-                   BSplines = PrepareBSpline(q1, q2, q3, T, 2, s)
-                   axis2tck = BSplines[1]
-                   # Coefficients[1] = PPoly.from_spline(BSplines[1]).c
-                   # u = 3
-                   # knots = BSplines[1][0]
-                   t2 = spalde(T, BSplines[1])
-                   for i in range(len(q2) - 2):
-                       Vq2.append(t2[i][1])
-                       Aq2.append(t2[i][2])
-                       Jq2.append(t2[i][3])
-                   i = 0
+                   s *= 1.01
+                   # T = np.delete(T, i)
+                   # q1 = np.delete(q1, i)
+                   # q2 = np.delete(q2, i)
+                   # q3 = np.delete(q3, i)
+                   print(len(T), len(q2))
+                   w2[i] /= 1.1
+                   BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
+                   q2 = BSplines[1](T)
+                   # print(q2)
+                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   # t1 = spalde(T, BSplines[0])
+                   for i in range(len(q2)):
+                       Vq2.append(BSplines[1].derivatives(T[i])[1])
+                       Aq2.append(BSplines[1].derivatives(T[i])[2])
+                       Jq2.append(BSplines[1].derivatives(T[i])[3])
+                   i = 3
                else:
                    i += 1
            except Exception as e:
@@ -450,31 +436,30 @@ if __name__ == "__main__":
        T = planTime(times, CartesianPoints, MoveList, Jmax, q3, CurrentStartTime)
        i = 1
        print(len(q1), len(Jq1), len(q2), len(Jq2), len(q3), len(Jq3))
-       s = 1
+       s = 0.1
        while i < (len(q3)):
            try:
                if (abs(Jq3[i]) > (Jmax + 0.0001)):
                    print('jerk3', Jq3[i], i)
-                   s *= 1.3
+                   s *= 1.01
                    Jq3 = []
                    Aq3 = []
                    Vq3 = []
-                   T = np.delete(T, i)
-                   q1 = np.delete(q1, i)
-                   q2 = np.delete(q2, i)
-                   q3 = np.delete(q3, i)
-                   BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
-                   axis3tck = BSplines[2]
-                   # Coefficients[2] = PPoly.from_spline(BSplines[0]).c
-                   # u = 3
-                   # knots = BSplines[2][0]
-                   # res = RebuildSpline(Vq3, Aq3, Jq3, Coefficients, knots, 3)
-                   t3 = spalde(T, BSplines[2])
-                   for i in range(len(q3) - 2):
-                       Vq3.append(t3[i][1])
-                       Aq3.append(t3[i][2])
-                       Jq3.append(t3[i][3])
-                   i = 0
+                   # T = np.delete(T, i)
+                   # q1 = np.delete(q1, i)
+                   # q2 = np.delete(q2, i)
+                   # q3 = np.delete(q3, i)
+                   w3[i] /= 1.1
+                   BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
+                   q3 = BSplines[2](T)
+                   # print(q2)
+                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   # t1 = spalde(T, BSplines[0])
+                   for i in range(len(q3)):
+                       Vq3.append(BSplines[2].derivatives(T[i])[1])
+                       Aq3.append(BSplines[2].derivatives(T[i])[2])
+                       Jq3.append(BSplines[2].derivatives(T[i])[3])
+                   i = 3
                else:
                    i += 1
            except Exception as e:
@@ -486,23 +471,22 @@ if __name__ == "__main__":
                    Jq3 = []
                    Aq3 = []
                    Vq3 = []
-                   s *= 1.3
-                   T = np.delete(T, i)
-                   q1 = np.delete(q1, i)
-                   q2 = np.delete(q2, i)
-                   q3 = np.delete(q3, i)
-                   BSplines = PrepareBSpline(q1, q2, q3, T, 3, s)
-                   axis3tck = BSplines[2]
-                   # Coefficients[2] = PPoly.from_spline(BSplines[0]).c
-                   # u = 3
-                   # knots = BSplines[2][0]
-                   # Vq3, Aq3, Jq3 = RebuildSpline(Vq3, Aq3, Jq3, Coefficients, knots)
-                   t3 = spalde(T, BSplines[2])
-                   for i in range(len(q3) - 2):
-                       Vq3.append(t3[i][1])
-                       Aq3.append(t3[i][2])
-                       Jq3.append(t3[i][3])
-                   i = 0
+                   s *= 1.01
+                   # T = np.delete(T, i)
+                   # q1 = np.delete(q1, i)
+                   # q2 = np.delete(q2, i)
+                   # q3 = np.delete(q3, i)
+                   w3[i] /= 1.1
+                   BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
+                   q3 = BSplines[2](T)
+                   # print(q2)
+                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   # t1 = spalde(T, BSplines[0])
+                   for i in range(len(q3)):
+                       Vq3.append(BSplines[2].derivatives(T[i])[1])
+                       Aq3.append(BSplines[2].derivatives(T[i])[2])
+                       Jq3.append(BSplines[2].derivatives(T[i])[3])
+                   i = 3
                else:
                    i += 1
            except Exception as e:
@@ -730,8 +714,6 @@ if __name__ == "__main__":
        realspeed[2] = temp[2]
        for i in range(min(len(realspeed[0]), len(realspeed[1]), len(realspeed[2]))):
            vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
-       for i in range(len(testJ2)):
-           j1.append(testJ2[i][4])
        import plotly.graph_objects as go
        import plotly.express as px
        from plotly.subplots import make_subplots

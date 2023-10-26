@@ -2,8 +2,10 @@ import math
 import numpy as np
 from scipy.spatial.distance import sqeuclidean
 from GCodeHandler import Movement
+indexes = []
 def planTime(times, spline, Movements: list, Amax, splineaxis, StartTime): #осейвой сплайн нуджен чтобы знать длину вектора времени после выкидывания точек
     T = []
+    global indexes
     T = np.linspace(StartTime, 1 , len(splineaxis))
     print(len(spline), len(T))
     T[0] = StartTime
@@ -19,7 +21,7 @@ def planTime(times, spline, Movements: list, Amax, splineaxis, StartTime): #ос
             dt = math.sqrt(sqeuclidean([spline[i][0], spline[i][1], spline[i][2]], [spline[i-1][0], spline[i-1][1], spline[i-1][2]])) / (
                        Movements[Counter].speed)
             T[i + 1] = T[i] + dt
-            print('DT = ',dt)
+            #print('DT = ',dt)
             if T[i] == T[i + 1] or  dt == 0:
                 print('dt = 0!', T[i], T[i + 1], dt)
                 raise ValueError
@@ -32,7 +34,8 @@ def planTime(times, spline, Movements: list, Amax, splineaxis, StartTime): #ос
                                      [spline[i + 1][0], spline[i + 1][1], spline[i + 1][2]])) / (
                                      Movements[Counter + 1].speed)
                     Counter += 1
-                    T[i + 1] = T[i] + dt
+                    indexes.append(i)
+                    T[i] = T[i - 1] + dt
                     if i == (len(splineaxis) - 2):
                         i += 1
                     else:

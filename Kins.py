@@ -54,21 +54,38 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
             i += 1
         return pointsOut
     elif kins == 'DELTA':
-        rf = kwargs.get('rf')  # длина ноги идущей к раб основанию
-        re = kwargs.get('rf')  # длина ноги идущей к раб органу
-        e = kwargs.get('e')  # Сторона подвижной платформы
-        f = kwargs.get('f')  # Сторона неподвижной платформы
+        i = 0
         pointsOut = []
-        i = 1
         while (i < len(pointsIn)):
-            cos120 = math.cos(2.0 * math.pi / 3.0)
-            sin120 = math.sin(2.0 * math.pi / 3.0)
-            theta1 = calcAngleYZ(pointsIn[i][0], pointsIn[i][1], pointsIn[i][2], f, e, rf, re)
-            theta2 = calcAngleYZ(pointsIn[i][0] * cos120 + pointsIn[i][1] * sin120, pointsIn[i][1] * cos120 - pointsIn[i][0] * sin120, pointsIn[i][2], f, e, rf, re)  # rotate +120 deg
-            theta3 = calcAngleYZ(pointsIn[i][0] * cos120 - pointsIn[i][1] * sin120, pointsIn[i][1] * cos120 + pointsIn[i][0] * sin120, pointsIn[i][2], f, e, rf, re)
-            pointsOut.append([theta1, theta2, theta3])# rotate -120 deg
+            x = pointsIn[i][0]
+            y = pointsIn[i][1]
+            z = pointsIn[i][2]
+            d2 = 180
+            alpha = math.pi / 4
+            d3 = 70
+            d4 = 46
+            d5 = 110
+            l = 403
+            re = 45
+            theta = [0, (math.pi / 2), (7 * math.pi / 6), (11 * math.pi / 6)]
+            rb = d2/math.sqrt(3) + d5 * math.cos(alpha) + d3 * math.sin(alpha)
+            d = []
+            k = 0
+            diskr = [0,0,0,0]
+            mu = [[0,0,0,0], [0,0,0,0], [0,0,0,0]]
+            k = 1
+            while k < 4:
+                mu[1][k] = 2 * math.cos(alpha) * (re - rb + math.cos(theta[k]) * x + math.sin(theta[k]) * y) - 2 * math.sin(alpha) * z
+                mu[2][k] = -(l * l) + x * x + y * y + z * z + (re - rb) * (
+                            re - rb + 2 * math.cos(theta[k]) * x + 2 * math.sin(theta[k]) * y)
+                diskr[k] = mu[1][k] * mu[1][k] - 4 * mu[2][k]
+                k += 1
+            x = 150 + (-mu[1][1] - math.sqrt(diskr[1])) / 2
+            y = 150 + (-mu[1][2] - math.sqrt(diskr[2])) / 2
+            z = 150 + (-mu[1][3] - math.sqrt(diskr[3])) / 2
+            pointsOut.append([x, y, z])
             i += 1
-        return pointsOut
+    return pointsOut
 def ForwardKins(pos, a, b, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
     if kins == 'SCARA':
         alpha = pos[0]
@@ -82,59 +99,55 @@ def ForwardKins(pos, a, b, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
     elif kins == 'TRIV':
         return (pos[0], pos[1], pos[2])
     elif kins == 'DELTA':
-        rf = kwargs.get('rf') # длина ноги идущей к раб основанию
-        re = kwargs.get('rf') # длина ноги идущей к раб органу
-        e = kwargs.get('e') # Сторона подвижной платформы
-        f = kwargs.get('f') # Сторона неподвижной платформы
-        theta1 = pos[0]
-        theta2 = pos[1]
-        theta3 = pos[2]
-        theta1, theta2, theta3 = math.radians(theta1), math.radians(theta2), math.radians(theta3)
-        t = (f - e) * math.tan(math.degrees(30)) / 2
-        # Calculate position of leg1's joint.  x1 is implicitly zero - along the axis
-        y1 = -(t + rf * math.cos(theta1))
-        z1 = -rf * math.sin(theta1)
+        d2 = 180
+        alpha = math.pi / 4
+        d3 = 70
+        d4 = 46
+        d5 = 110
+        l = 403
+        re = 45
+        theta = [0, (math.pi / 2), (7 * math.pi / 6), (11 * math.pi / 6)]
+        rb = d2 / math.sqrt(3) + d5 * math.cos(alpha) + d3 * math.sin(alpha)
+        d = []
+        d.append(150 + pos[0])
+        d.append(150 + pos[1])
+        d.append(150 + pos[2])
+        sigma = [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]]
+        lmbd = [0,0,0,0]
+        i = 1
+        while i < 4:
+            sigma[1][i] = 2 * math.cos(theta[i]) * (re - rb + d[i - 1] * math.cos(alpha))
+            sigma[2][i] = 2 * math.sin(theta[i]) * (re - rb + d[i - 1] * math.cos(alpha))
+            sigma[3][i] = -2 * d[i - 1] * math.sin(alpha)
+            lmbd[i] = l * l - d[i - 1] * d[i - 1] - (re - rb) * (re - rb) - 2 * d[i - 1] * re * math.cos(alpha) + 2 * d[i - 1] * rb * math.cos(alpha)
+            i += 1
+        a = [[0,0,0], [0,0,0], [0,0,0]]
+        a[1][1] = sigma[1][1] - sigma[1][3]
+        a[1][2] = sigma[2][1] - sigma[2][3]
+        a[2][1] = sigma[1][2] - sigma[1][3]
+        a[2][2] = sigma[2][2] - sigma[2][3]
+        gamma = [0,0,0]
 
-        # Calculate leg2's joint position
-        y2 = (t + rf * math.cos(theta2)) * math.sin(math.pi / 6)
-        x2 = y2 * math.tan(math.pi / 3)
-        z2 = -rf * math.sin(theta2)
+        deta = a[1][1] * a[2][2] - a[2][1] * a[1][2]
+        gamma[1] = sigma[3][3] - sigma[3][1]
+        gamma[2] = sigma[3][3] - sigma[3][2]
+        la = [0,0,0]
+        la[1] = lmbd[1] - lmbd[3]
+        la[2] = lmbd[2] - lmbd[3]
+        g1 = (a[2][2] * gamma[1] - a[1][2] * gamma[2]) / deta
+        g2 = (-a[2][1] * gamma[1] + a[1][1] * gamma[2]) / deta
+        e1 = (a[2][2] * la[1] - a[1][2] * la[2]) / deta
+        e2 = (-a[2][1] * la[1] + a[1][1] * la[2]) / deta
 
-        # Calculate leg3's joint position
-        y3 = (t + rf * math.cos(theta3)) * math.sin(math.pi / 6)
-        x3 = -y3 * math.tan(math.pi / 3)
-        z3 = -rf * math.sin(theta3)
+        etta = g1 * g1 + g2 * g2 + 1;
+        k = 2 * e1 * g1 + 2 * e2 * g2 + sigma[1][1] * g1 + sigma[2][1] * g2 + sigma[3][1];
+        delta = e1 * e1 + e2 * e2 + sigma[1][1] * e1 + sigma[2][1] * e2 - lmbd[1];
 
-        # From the three positions in space, determine if there is a valid
-        # location for the effector
-        dnm = (y2 - y1) * x3 - (y3 - y1) * x2
+        z = (-k + math.sqrt(k * k - 4 * etta * delta)) / (2 * etta)
+        x = g1 * z + e1
+        y = g2 * z+ e2
+        return [x, y, z]
 
-        w1 = y1 * y1 + z1 * z1
-        w2 = x2 * x2 + y2 * y2 + z2 * z2
-        w3 = x3 * x3 + y3 * y3 + z3 * z3
-
-        # x = (a1*z + b1)/dnm
-        a1 = (z2 - z1) * (y3 - y1) - (z3 - z1) * (y2 - y1)
-        b1 = -((w2 - w1) * (y3 - y1) - (w3 - w1) * (y2 - y1)) / 2.0
-
-        # y = (a2*z + b2)/dnm;
-        a2 = -(z2 - z1) * x3 + (z3 - z1) * x2
-        b2 = ((w2 - w1) * x3 - (w3 - w1) * x2) / 2.0
-
-        # a*z^2 + b*z + c = 0
-        a = a1 * a1 + a2 * a2 + dnm * dnm
-        b = 2 * (a1 * b1 + a2 * (b2 - y1 * dnm) - z1 * dnm * dnm)
-        c = (b2 - y1 * dnm) * (b2 - y1 * dnm) + b1 * b1 + dnm * dnm * (z1 * z1 - re * re)
-
-        # discriminant
-        d = b * b - 4.0 * a * c
-        if d < 0:
-            raise ValueError # non-existing point
-
-        z0 = -0.5 * (b + math.sqrt(d)) / a
-        x0 = (a1 * z0 + b1) / dnm
-        y0 = (a2 * z0 + b2) / dnm
-        return  [x0, y0, z0]
 def ScaraInvKins2(pos, a, b, c, limits, negative_elbow_angle=False):
     x = pos[0]
     y = pos[1]
