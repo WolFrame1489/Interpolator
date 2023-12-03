@@ -130,7 +130,7 @@ def OptimizeNURBS(points):
     while not End:
         rang = cdist(ideal, v, 'euclidean')
         print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.0000005) and (rang[j][1] < 0.0000005) and (rang[j][2] < 0.0000005):
+        if (rang[j][0] < 0.000000005) and (rang[j][1] < 0.00000005) and (rang[j][2] < 0.00000005):
             smoothing *= 1.1
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
@@ -159,6 +159,7 @@ def PrepareBSpline(q1, q2, q3, T, axis, smoothing, *args, **kwargs):
     q2tck = tuple()
     q3tck = tuple()
     w = kwargs.get('w')
+    #w = np.ones(len(q1))
     ideal = kwargs.get('ideal')
     if (axis == 1):
         knots = np.linspace(50, 100, 10)

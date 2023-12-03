@@ -80,9 +80,9 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
                             re - rb + 2 * math.cos(theta[k]) * x + 2 * math.sin(theta[k]) * y)
                 diskr[k] = mu[1][k] * mu[1][k] - 4 * mu[2][k]
                 k += 1
-            x = 150 + (-mu[1][1] - math.sqrt(diskr[1])) / 2
-            y = 150 + (-mu[1][2] - math.sqrt(diskr[2])) / 2
-            z = 150 + (-mu[1][3] - math.sqrt(diskr[3])) / 2
+            x = 150 - (-mu[1][1] - math.sqrt(diskr[1])) / 2
+            y = 150 - (-mu[1][2] - math.sqrt(diskr[2])) / 2
+            z = 150 - (-mu[1][3] - math.sqrt(diskr[3])) / 2
             pointsOut.append([x, y, z])
             i += 1
     return pointsOut
@@ -109,9 +109,9 @@ def ForwardKins(pos, a, b, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
         theta = [0, (math.pi / 2), (7 * math.pi / 6), (11 * math.pi / 6)]
         rb = d2 / math.sqrt(3) + d5 * math.cos(alpha) + d3 * math.sin(alpha)
         d = []
-        d.append(150 + pos[0])
-        d.append(150 + pos[1])
-        d.append(150 + pos[2])
+        d.append(150 - pos[0])
+        d.append(150 - pos[1])
+        d.append(150 - pos[2])
         sigma = [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]]
         lmbd = [0,0,0,0]
         i = 1
