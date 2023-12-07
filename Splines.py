@@ -14,7 +14,7 @@ from geomdl.visualization import VisMPL
 from geomdl.visualization import VisPlotly
 from geomdl import knotvector
 import random
-from scipy.interpolate import splrep, splev, splder, splprep, InterpolatedUnivariateSpline, interp1d, LSQUnivariateSpline, UnivariateSpline
+from scipy.interpolate import splrep, splev, spalde, splprep, InterpolatedUnivariateSpline, interp1d, LSQUnivariateSpline, UnivariateSpline
 from scipy.spatial.distance import cdist, sqeuclidean
 
 import TimeFeedratePlan
@@ -113,7 +113,9 @@ def OptimizeNURBS(points):
     b.append(x)
     b.append(y)
     b.append(z)
-    res = splprep(b, w=None, u=None, ub=None, ue=None, k=1, task=0, s=0.1, t=None, full_output=0, nest=None, per=0, quiet=1)
+    res = splprep(b, w=None, u=None, ub=None, ue=None, k=2, task=0, s=0.1, t=None, full_output=0, nest=None, per=0, quiet=1)
+    tck = res
+    derivatives = spalde(tck[1], tck[0])
     res = splev(res[1], res[0])
     ideal = []
     for i in range(len(res)):
@@ -128,14 +130,13 @@ def OptimizeNURBS(points):
     for i in range(len(res)):
         v.append(list([res[0][i], res[1][i], res[2][i]]))
     while not End:
-        rang = cdist(ideal, v, 'euclidean')
-        print(j, (rang[j][0]), (rang[j][1]), rang[j][2])
-        if (rang[j][0] < 0.000000005) and (rang[j][1] < 0.00000005) and (rang[j][2] < 0.00000005):
+        if ((derivatives[0][j][2] > 10000000) and (derivatives[1][j][2] > 10000000) and (derivatives[2][j][2] > 10000000)):
             smoothing *= 1.1
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
+            tck = res
+            derivatives = spalde(tck[1], tck[0])
             res = splev(res[1], res[0])
-            rang = []
             v = []
             j = 1
             for i in range(len(res)):
@@ -143,10 +144,9 @@ def OptimizeNURBS(points):
             continue
         else:
             j += 1
-        if j == len(rang) - 1:
+        if j == len(derivatives[0]) - 1:
             End = True
     print('smoothing', smoothing)
-    print('Error', rang[-1])
     return res
 
 def PrepareBSpline(q1, q2, q3, T, axis, smoothing, *args, **kwargs):
@@ -171,7 +171,7 @@ def PrepareBSpline(q1, q2, q3, T, axis, smoothing, *args, **kwargs):
         if ideal:
            s1 = InterpolatedUnivariateSpline(T, q1, k=5)
         else:
-            s1 = UnivariateSpline(T, q1, s=0.05, k=5, w=w)
+            s1 = UnivariateSpline(T, q1, s=smoothing, k=5, w=w)
         #q1tck = splrep(T, q1, w=None, xb=None, xe=None, k=5, task=0, s=0, t=None, full_output=0, per=0, quiet=1)
         #q1tck = splrep(T, q1, w=w, xb=None, xe=None, k=5, task=0, s=0, t=q1tck[0][-4:4], full_output=0, per=0, quiet=1)
     elif (axis == 2):
@@ -182,7 +182,7 @@ def PrepareBSpline(q1, q2, q3, T, axis, smoothing, *args, **kwargs):
         print('spline', len(T), len(q2))
         #q2tck = splrep(T, q2, w=None, xb=None, xe=None, k=5, task=0, s=0, t=None, full_output=0, per=0, quiet=1)
         #q2tck = splrep(T, q2, w=w, xb=None, xe=None, k=5, task=0, s=0, t=q2tck[0][-4:4], full_output=0, per=0, quiet=1)
-        s2 = UnivariateSpline(T, q2, s=0.05, k=5, w=w)
+        s2 = UnivariateSpline(T, q2, s=smoothing, k=5, w=w)
     else:
         w = np.ones(len(q2))
         for i in range(len(TimeFeedratePlan.indexes)):
@@ -191,7 +191,7 @@ def PrepareBSpline(q1, q2, q3, T, axis, smoothing, *args, **kwargs):
         print('spline', len(T), len(q3))
         #q3tck = splrep(T, q3, w=None, xb=None, xe=None, k=5, task=0, s=0, t=None, full_output=0, per=0, quiet=1)
         #q3tck = splrep(T, q3, w=w, xb=None, xe=None, k=5, task=0, s=0, t=q3tck[0][-4:4], full_output=0, per=0, quiet=1)
-        s3 = UnivariateSpline(T, q3, s=0.05, k=5, w=w)
+        s3 = UnivariateSpline(T, q3, s=smoothing, k=5, w=w)
     result.append(s1)
     result.append(s2)
     result.append(s3)

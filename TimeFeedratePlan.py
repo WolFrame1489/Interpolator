@@ -18,9 +18,10 @@ def planTime(times, spline, Movements: list, Amax, splineaxis, StartTime): #ос
     print('q1', len(splineaxis))
     while not End:
         if i < (len(splineaxis) - 1):
-            dt = math.sqrt(sqeuclidean([spline[i][0], spline[i][1], spline[i][2]], [spline[i-1][0], spline[i-1][1], spline[i-1][2]])) / (
+            if T[i] < (Currenttime + Movements[Counter].time):
+                dt = math.sqrt(sqeuclidean([spline[i][0], spline[i][1], spline[i][2]], [spline[i+1][0], spline[i+1][1], spline[i+1][2]])) / (
                        Movements[Counter].speed)
-            T[i + 1] = T[i] + dt
+                T[i + 1] = T[i] + dt
             #print('DT = ',dt)
             if T[i] == T[i + 1] or  dt == 0:
                 print('dt = 0!', T[i], T[i + 1], dt)
@@ -28,6 +29,7 @@ def planTime(times, spline, Movements: list, Amax, splineaxis, StartTime): #ос
             #print('T[i]', T[i], Currenttime + Movements[Counter].time, i, dt)
             if (T[i] >= (Currenttime + Movements[Counter].time)):
                 if Counter < (len(Movements) - 1):
+                    print('SPEED INFO', Movements[Counter + 1].speed)
                     Currenttime += Movements[Counter].time #abs((Movements[Counter].speed - Movements[Counter + 1].speed) / ((Amax)))
                     print(Currenttime, Counter, spline[i][0], spline[i][1], spline[i][2])
                     dt = math.sqrt(sqeuclidean([spline[i][0], spline[i][1], spline[i][2]],
@@ -35,11 +37,11 @@ def planTime(times, spline, Movements: list, Amax, splineaxis, StartTime): #ос
                                      Movements[Counter + 1].speed)
                     Counter += 1
                     indexes.append(i)
-                    T[i] = T[i - 1] + dt
+                    T[i + 1] = T[i] + dt
                     if i == (len(splineaxis) - 2):
                         i += 1
                     else:
-                        i += 2
+                        i += 1
                     continue
                 elif (Counter == (len(Movements) - 1)):
                     Currenttime += Movements[Counter].time

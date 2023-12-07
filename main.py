@@ -52,7 +52,7 @@ if __name__ == "__main__":
        DeltaRE = 2320.0
        DeltaF = 4570.0
        DeltaE = 1150.0
-       Jmax  =  600000000.5
+       Jmax  =  6000000.5
        Amax = 60000.5
        Vmax = 10.5
        Vmove = 0.005
@@ -74,7 +74,7 @@ if __name__ == "__main__":
        print('Linearizing...')
        print('getcwd:      ', os.getcwd())
        os.system(
-           'python pygcode-norm.py  -al -alp 0.001 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName))  # линеаризуем файл
+           'python pygcode-norm.py  -al -alp 0.00001 -alm i  ' + (os.getcwd() + '\\' + gcodeFileName))  # линеаризуем файл
        print('Reading G-code....')
        HandleGCode('coderework.txt', CurrentPos, Vmax)  # делаем точки из ж кода и выдаем им веса
        times = []  # список ля хранения времен, необходимых на каждое движение
@@ -206,12 +206,20 @@ if __name__ == "__main__":
            Vq2.append(BSplines[1].derivatives(T[i])[1])
            Aq2.append(BSplines[1].derivatives(T[i])[2])
            Jq2.append(BSplines[1].derivatives(T[i])[3])
+       if np.isnan(Vq2[0]):
+           print(T)
+           print(Vq2)
+           exit(0)
        BSplines = PrepareBSpline(q1, q2, q3, T, 3, 0.0, ideal=True)
        axis3tck = BSplines[2]
        for i in range(len(q3) - 2):
            Vq3.append(BSplines[2].derivatives(T[i])[1])
            Aq3.append(BSplines[2].derivatives(T[i])[2])
            Jq3.append(BSplines[2].derivatives(T[i])[3])
+       if np.isnan(Vq3[0]):
+           print(T)
+           print(Vq3 )
+           exit(0)
        print('TESTING', len(Jq1), len(Jq2), len(Jq3))
        # while (u < (len(knots)) - 4):
        #    Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4))+ (4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
@@ -318,11 +326,11 @@ if __name__ == "__main__":
            try:
                if (abs(Jq1[i]) > (Jmax + 0.0001)):
                    print('jerk1', Jq1[i], i)
-                   s *= 1.21
+                   s *= 1.1
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   w1[i] /= 1.1
+                   w1[i] /= 5.1
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
@@ -349,11 +357,11 @@ if __name__ == "__main__":
            try:
                if (abs(Aq1[i]) > Amax):
                    print('accel1', Aq1[i], i)
-                   s *= 1.01
+                   s *= 1.1
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   w1[i] /= 1.1
+                   w1[i] /= 5.1
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
@@ -388,13 +396,13 @@ if __name__ == "__main__":
                    Jq2 = []
                    Aq2 = []
                    Vq2 = []
-                   s *= 1.01
+                   s *= 1.1
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
                    print(len(T), len(q2))
-                   w2[i] /= 1.1
+                   w2[i] /= 5.1
                    BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    q2 = BSplines[1](T)
                    axis2tck = BSplines[1]
@@ -405,6 +413,7 @@ if __name__ == "__main__":
                        Vq2.append(BSplines[1].derivatives(T[i])[1])
                        Aq2.append(BSplines[1].derivatives(T[i])[2])
                        Jq2.append(BSplines[1].derivatives(T[i])[3])
+                   print(Vq2)
                    i = 3
                else:
                    i += 1
@@ -417,13 +426,13 @@ if __name__ == "__main__":
                    Jq2 = []
                    Aq2 = []
                    Vq2 = []
-                   s *= 1.01
+                   s *= 1.1
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
                    print(len(T), len(q2))
-                   w2[i] /= 1.1
+                   w2[i] /= 5.1
                    BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    axis2tck = BSplines[1]
                    q2 = BSplines[1](T)
@@ -434,6 +443,7 @@ if __name__ == "__main__":
                        Vq2.append(BSplines[1].derivatives(T[i])[1])
                        Aq2.append(BSplines[1].derivatives(T[i])[2])
                        Jq2.append(BSplines[1].derivatives(T[i])[3])
+                   print(Vq2)
                    i = 3
                else:
                    i += 1
@@ -448,7 +458,7 @@ if __name__ == "__main__":
            try:
                if (abs(Jq3[i]) > (Jmax + 0.0001)):
                    print('jerk3', Jq3[i], i)
-                   s *= 1.01
+                   s *= 1.1
                    Jq3 = []
                    Aq3 = []
                    Vq3 = []
@@ -456,7 +466,7 @@ if __name__ == "__main__":
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   w3[i] /= 1.1
+                   w3[i] /= 5.1
                    BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                    axis3tck = BSplines[2]
                    q3 = BSplines[2](T)
@@ -479,12 +489,12 @@ if __name__ == "__main__":
                    Jq3 = []
                    Aq3 = []
                    Vq3 = []
-                   s *= 1.01
+                   s *= 1.1
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   w3[i] /= 1.1
+                   w3[i] /= 5.1
                    BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                    q3 = BSplines[2](T)
                    axis3tck = BSplines[2]
@@ -727,9 +737,9 @@ if __name__ == "__main__":
        import plotly.express as px
        from plotly.subplots import make_subplots
 
-       fig = px.scatter(x=realpoints[0], y=realpoints[1])
+       #fig = px.scatter(x=realpoints[0], y=realpoints[1])
        # fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1])])
-       fig.show()
+       #fig.show()
        file = open('prg1.sgn', 'r')
 
        file = file.read()
@@ -793,7 +803,7 @@ if __name__ == "__main__":
        while len(T) > len(vp):
            print(len(T), len(vp))
            T.pop()
-       fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp)
+       fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp, title='Tool speed')
        fig.show()
        # fig = go.Figure(data=[go.Scatter(x=T, y=BVq1), go.Scatter(x=T, y=BVq2), go.Scatter(x=T, y=BVq3)])
        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
