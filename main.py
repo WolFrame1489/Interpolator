@@ -63,7 +63,7 @@ if __name__ == "__main__":
        realy = []
        JointPoints = []
        if len(CartesianPoints) < 1:
-            CurrentPos = [0.1, 0.1, 200.1, 1]  # начальная позиция робота
+            CurrentPos = [0.0, 0.0, 0.0, 1]  # начальная позиция робота
        else:
            CurrentPos = CartesianPoints[-1]
            CurrentPos.append(1)
@@ -117,7 +117,7 @@ if __name__ == "__main__":
            CartesianPoints.append([OptimizedPoints[0][i], OptimizedPoints[1][i], OptimizedPoints[2][i]])
        import plotly.express as px
 
-       fig = px.scatter(x=OptimizedPoints[0], y=OptimizedPoints[0], title="BSPLINETEST")
+       fig = px.scatter(x=OptimizedPoints[0], y=OptimizedPoints[2], title="BSPLINETEST")
        fig.show()
        JointPoints = InvKins(CartesianPoints, 175, 275, 100, Limits, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                              f=DeltaF)  # делаем ОЗК по полученным точкам
@@ -886,6 +886,7 @@ if __name__ == "__main__":
            file = open('axis1pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
+               print((np.float32(Axis1FinalPos[i])))
                file.write(bytearray(np.float32(Axis1FinalPos[i])))
            file.close()
            # for i in range(len(timeaxis)):
