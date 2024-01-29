@@ -52,10 +52,11 @@ if __name__ == "__main__":
        DeltaRE = 2320.0
        DeltaF = 4570.0
        DeltaE = 1150.0
-       Jmax  =  6000000.5
-       Amax = 60000.5
+       Jmax  =  30000.5
+       Amax = 300.5
        Vmax = 10.5
        Vmove = 0.005
+       Tpredict = 0.00035
        PosCycleTime = 0.000400  # время такта контура позиции
        GCodeHandler.weight = 1.0  # вес начальной точки
        realx = []
@@ -119,7 +120,7 @@ if __name__ == "__main__":
 
        fig = px.scatter(x=OptimizedPoints[0], y=OptimizedPoints[2], title="BSPLINETEST")
        fig.show()
-       JointPoints = InvKins(CartesianPoints, 175, 275, 100, Limits, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+       JointPoints = InvKins(CartesianPoints,  400, 275, 100, Limits, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                              f=DeltaF)  # делаем ОЗК по полученным точкам
        x = []
        y = []
@@ -267,7 +268,7 @@ if __name__ == "__main__":
        realspeed[0].append(0)
        realspeed[1].append(0)
        realspeed[2].append(0)
-       temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
+       temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 250, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
        realspeed[0] = temp[0]
        realspeed[1] = temp[1]
        realspeed[2] = temp[2]
@@ -548,13 +549,13 @@ if __name__ == "__main__":
        # по пзк получаем траекторию инструмента
        for i in range((min(len(q1), len(q2), len(q3)))):
            realpoints[0].append(
-               (ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               (ForwardKins([q1[i], q2[i], q3[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                             f=DeltaF))[0])
            realpoints[1].append(
-               (ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               (ForwardKins([q1[i], q2[i], q3[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                             f=DeltaF))[1])
            realpoints[2].append(
-               (ForwardKins([q1[i], q2[i], q3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               (ForwardKins([q1[i], q2[i], q3[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                             f=DeltaF))[2])
 
        # fig = plt.figure()
@@ -727,7 +728,7 @@ if __name__ == "__main__":
        realspeed[0].append(0)
        realspeed[1].append(0)
        realspeed[2].append(0)
-       temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 175, 275, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
+       temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 275, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
        realspeed[0] = temp[0]
        realspeed[1] = temp[1]
        realspeed[2] = temp[2]
@@ -863,7 +864,11 @@ if __name__ == "__main__":
            # tempspline = BSpline(axis1tck[0], axis1tck[1], 2)
            # testspline = tempspline.construct_fast(axis1tck[0], axis1tck[1], axis1tck[2])
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
+           predictlist = np.full(shape=len(timeaxis),fill_value=Tpredict, dtype=np.float64)
+           timeaxis = timeaxis - predictlist
+           timeaxis[0] = 0.0
            Axis1FinalPos = axis1tck(timeaxis)
+           timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
            Axis1FinalSpeed = axis1tck.derivative(1)
            Axis1FinalSpeed = Axis1FinalSpeed(timeaxis)
            Axis1FinalAcc = axis1tck.derivative(2)
@@ -896,7 +901,11 @@ if __name__ == "__main__":
            # testspline = tempspline.construct_fast(axis2tck[0], axis2tck[1], axis2tck[2])
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(SumTime / PosCycleTime))
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
+           predictlist = np.full(shape=len(timeaxis), fill_value=Tpredict, dtype=np.float64)
+           timeaxis = timeaxis - predictlist
+           timeaxis[0] = 0.0
            Axis2FinalPos = axis2tck(timeaxis)
+           timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
            Axis2FinalSpeed = axis2tck.derivative(1)
            Axis2FinalSpeed = Axis2FinalSpeed(timeaxis)
            Axis2FinalAcc = axis2tck.derivative(2)
@@ -923,7 +932,11 @@ if __name__ == "__main__":
            # tempspline = BSpline(axis3tck[0], axis3tck[1], 2)
            # testspline = tempspline.construct_fast(axis3tck[0], axis3tck[1], axis3tck[2])
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
+           predictlist = np.full(shape=len(timeaxis), fill_value=Tpredict, dtype=np.float64)
+           timeaxis = timeaxis - predictlist
+           timeaxis[0] = 0.0
            Axis3FinalPos = axis3tck(timeaxis)
+           timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
            Axis3FinalSpeed = axis3tck.derivative(1)
            Axis3FinalSpeed = Axis3FinalSpeed(timeaxis)
            Axis3FinalAcc = axis3tck.derivative(2)
@@ -948,13 +961,13 @@ if __name__ == "__main__":
            file.close()
            for i in range((min(len(Axis1FinalPos), len(Axis2FinalPos), len(Axis3FinalPos)))):
                realpoints[0].append(
-                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[0])
                realpoints[1].append(
-                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[1])
                realpoints[2].append(
-                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[2])
            fig = plt.figure()
            ax = fig.add_subplot(111, projection='3d')
