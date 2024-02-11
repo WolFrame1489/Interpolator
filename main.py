@@ -37,7 +37,7 @@ CommAxis3TCK = []
 
 SumTime = 0.0
 #prg = ['line1.txt', 'line2.txt']
-prg = ['square.txt']
+prg = ['square2.txt']
 segment = 0
 CartesianPoints = []
 timeaxis = [0]
@@ -52,8 +52,8 @@ if __name__ == "__main__":
        DeltaRE = 2320.0
        DeltaF = 4570.0
        DeltaE = 1150.0
-       Jmax  =  30000.5
-       Amax = 300.5
+       Jmax  =  30.5
+       Amax = 3.5
        Vmax = 10.5
        Vmove = 0.005
        Tpredict = 0.00035
@@ -64,11 +64,11 @@ if __name__ == "__main__":
        realy = []
        JointPoints = []
        if len(CartesianPoints) < 1:
-            CurrentPos = [0.0, 0.0, 0.0, 1]  # начальная позиция робота
+            CurrentPos = [0.0, 650.0, 0.0, 1]  # начальная позиция робота
        else:
            CurrentPos = CartesianPoints[-1]
            CurrentPos.append(1)
-       Kinematics = 'DELTA'
+       Kinematics = 'SCARA'
 
        filename = 'testtraj.cpt'
        gcodeFileName = prg[segment]  # TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
@@ -108,7 +108,7 @@ if __name__ == "__main__":
        print('optimizing NURBS...')
        OptimizedPoints = OptimizeNURBS(CartesianPoints)
        print('Optimization complete...')
-       Limits = [[math.radians(-140), math.radians(140)], [math.radians(-160), math.radians(160)],
+       Limits = [[math.radians(-180), math.radians(180)], [math.radians(-180), math.radians(180)],
                  [-100, 100]]  # лимиты робота
        Vmaxq1 = 2.0
        Vmaxq2 = 1.7
@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
        fig = px.scatter(x=OptimizedPoints[0], y=OptimizedPoints[2], title="BSPLINETEST")
        fig.show()
-       JointPoints = InvKins(CartesianPoints,  400, 275, 100, Limits, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+       JointPoints = InvKins(CartesianPoints,  400, 250, 100, Limits, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                              f=DeltaF)  # делаем ОЗК по полученным точкам
        x = []
        y = []
@@ -549,13 +549,13 @@ if __name__ == "__main__":
        # по пзк получаем траекторию инструмента
        for i in range((min(len(q1), len(q2), len(q3)))):
            realpoints[0].append(
-               (ForwardKins([q1[i], q2[i], q3[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                             f=DeltaF))[0])
            realpoints[1].append(
-               (ForwardKins([q1[i], q2[i], q3[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                             f=DeltaF))[1])
            realpoints[2].append(
-               (ForwardKins([q1[i], q2[i], q3[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                             f=DeltaF))[2])
 
        # fig = plt.figure()
@@ -728,7 +728,7 @@ if __name__ == "__main__":
        realspeed[0].append(0)
        realspeed[1].append(0)
        realspeed[2].append(0)
-       temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 275, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
+       temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 250, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
        realspeed[0] = temp[0]
        realspeed[1] = temp[1]
        realspeed[2] = temp[2]
@@ -886,13 +886,13 @@ if __name__ == "__main__":
            file = open('axis1res.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
-               file.write(bytearray(np.float32(Axis1FinalSpeed[i] / 75)))
+               file.write(bytearray(np.float32(Axis1FinalSpeed[i])))
            file.close()
            file = open('axis1pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
                print((np.float32(Axis1FinalPos[i])))
-               file.write(bytearray(np.float32(Axis1FinalPos[i])))
+               file.write(bytearray(np.float32(Axis1FinalPos[i]  - (math.pi / 2))))
            file.close()
            # for i in range(len(timeaxis)):
            #   file.write(str(timeaxis[i]) + ';' + str(Axis1FinalPos[i]) + ';'  + str(Axis1FinalSpeed[i]) + ';'  + str(Axis1FinalAcc[i]) + ';' + '\n')
@@ -921,12 +921,12 @@ if __name__ == "__main__":
            file = open('axis2res.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 2')
-               file.write(bytearray(np.float32(Axis2FinalSpeed[i] / 75)))
+               file.write(bytearray(np.float32(Axis2FinalSpeed[i]  * 1)))
            file.close()
            file = open('axis2pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
-               file.write(bytearray(np.float32(Axis2FinalPos[i])))
+               file.write(bytearray(np.float32(Axis2FinalPos[i] * 1)))
            file.close()
            # CommAxis3TCK += axis3tck
            # tempspline = BSpline(axis3tck[0], axis3tck[1], 2)
@@ -952,22 +952,25 @@ if __name__ == "__main__":
            file = open('axis3res.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 3')
-               file.write(bytearray(np.float32(Axis3FinalSpeed[i] / 75)))
+               file.write(bytearray(np.float32(Axis3FinalSpeed[i] * 1)))
            file.close()
            file = open('axis3pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
-               file.write(bytearray(np.float32(Axis3FinalPos[i])))
+               if Kinematics == 'SCARA':
+                   file.write(bytearray(np.float32(Axis3FinalPos[i] )))
+               else:
+                   file.write(bytearray(np.float32(Axis3FinalPos[i] * 1)))
            file.close()
            for i in range((min(len(Axis1FinalPos), len(Axis2FinalPos), len(Axis3FinalPos)))):
                realpoints[0].append(
-                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[0])
                realpoints[1].append(
-                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[1])
                realpoints[2].append(
-                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[2])
            fig = plt.figure()
            ax = fig.add_subplot(111, projection='3d')

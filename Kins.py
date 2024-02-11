@@ -2,6 +2,12 @@ import math
 import numpy as np
 def inside_limits(v, limits):
     return np.all([dim >= lim[0] and dim <= lim[1] for (dim, lim) in zip(v, limits)])
+def calcAngle(reqcos):
+    res1 = math.atan2(math.sqrt(1-math.pow(reqcos,
+        2)), reqcos)
+    res2 = math.atan2(math.sqrt(1-math.pow(reqcos,
+        2))*(-1), reqcos)
+    return (res1, res2)
 def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
     if kins == 'SCARA':
         pointsOut = []
@@ -16,23 +22,38 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
             if dist > L1 + L2:
                 raise ValueError("Позиция недостижимма {}".format([x, y, z]))
             # print((x**2 + y**2 - L1**2 - L2**2) / (2 * L1 * L2))
-            # print(x, y)
-            q2 = math.acos((x ** 2 + y ** 2 - L1 ** 2 - L2 ** 2) / (2 * L1 * L2))
-            if ((x < 0) and (y < 0)):
-                q2 *= -1
-            q1 = math.atan2(x, y) - (math.atan((L2 * math.sin(q2)) / (L1 + L2 * math.cos(q2))))
-            q2 *= -1
+            print(x, y, L1, L2)
+            ctheta2 = ((x ** 2 + y ** 2 - L1 ** 2 - L2 ** 2) / (2 * L1 * L2))
+            stheta2 = math.sqrt(1 - math.pow(ctheta2, 2))
+            ctheta1 =  (x * (L1 + L2 * ctheta2) + y * L2 * stheta2) / (x**2 + y**2)
 
-            if ((x >= 0) and (y >= 0)):
-                q1 = math.radians(90) - q1
-            if ((x < 0) and (y > 0)):
-                q1 = math.radians(90) - q1
-            if ((x < 0) and (y < 0)):
-                q1 = math.radians(270) - q1
-            if ((x > 0) and (y < 0)):
-                q1 = math.radians(-90) - q1
-            if ((x < 0) and (y == 0)):
-                q1 = math.radians(270) + q1
+            theta1a, theta1b = calcAngle(ctheta1)
+            theta2a, theta2b = calcAngle(ctheta2)
+
+
+
+            q1 = np.arctan2(y, x) - np.arccos((dist_dist + L2 ** 2 - L1 ** 2) / (2 * L2 * dist))
+            q2 = np.arccos((dist_dist - L2 ** 2 - L1 ** 2) / (2 * L2 * L1))
+
+
+            #q1 = theta1a
+            #q2 = theta2a
+            # q1 = q1 - q2
+            # q2 = -q2
+
+
+
+
+            # if ((x >= 0) and (y >= 0)):
+            #     q1 = math.radians(90) - q1
+            # if ((x < 0) and (y > 0)):
+            #     q1 = math.radians(90) - q1
+            # if ((x < 0) and (y < 0)):
+            #     q1 = math.radians(270) - q1
+            # if ((x > 0) and (y < 0)):
+            #     q1 = math.radians(-90) - q1
+            # if ((x < 0) and (y == 0)):
+            #     q1 = math.radians(270) + q1
             if (q1) < limits[0][0] or (q1) > limits[0][1]:
                 raise ValueError("Данная точка нарушает лимиты q1 = {}".format(math.degrees(q1)))
             if (q2) < limits[1][0] or (q2) > limits[1][1]:
@@ -86,7 +107,7 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
             pointsOut.append([x, y, z])
             i += 1
     return pointsOut
-def ForwardKins(pos, a, b, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
+def ForwardKins(pos, b, a, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
     if kins == 'SCARA':
         alpha = pos[0]
         beta = pos[1]
