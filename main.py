@@ -64,7 +64,7 @@ if __name__ == "__main__":
        realy = []
        JointPoints = []
        if len(CartesianPoints) < 1:
-            CurrentPos = [0.0, 650.0, 0.0, 1]  # начальная позиция робота
+            CurrentPos = [650.0, 0.0, 0.0, 1]  # начальная позиция робота
        else:
            CurrentPos = CartesianPoints[-1]
            CurrentPos.append(1)
@@ -90,7 +90,7 @@ if __name__ == "__main__":
        SumTime = sum(times)
        print(SumTime, times)
        PointsAmount = math.ceil(1 / (SumTime) * len(
-           times) * 8000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
+           times) * 100000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
        CartesianPoints = []
        deviation = 30
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
            CartesianPoints.append([OptimizedPoints[0][i], OptimizedPoints[1][i], OptimizedPoints[2][i]])
        import plotly.express as px
 
-       fig = px.scatter(x=OptimizedPoints[0], y=OptimizedPoints[2], title="BSPLINETEST")
+       fig = px.scatter(x=OptimizedPoints[0], y=OptimizedPoints[1], title="BSPLINETEST")
        fig.show()
        JointPoints = InvKins(CartesianPoints,  400, 250, 100, Limits, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                              f=DeltaF)  # делаем ОЗК по полученным точкам
@@ -128,17 +128,20 @@ if __name__ == "__main__":
        q2 = []
        q3 = []
        for i in range(len(JointPoints)):
-           if i > 0 and JointPoints[i] != JointPoints[i - 1]:
+           if (i > 0 and JointPoints[i] != JointPoints[i - 1]) or (i == 0):
                q1.append(JointPoints[i][0])
-           if i > 0 and JointPoints[i] != JointPoints[i - 1]:
+           if (i > 0 and JointPoints[i] != JointPoints[i - 1]) or (i == 0):
                q2.append(JointPoints[i][1])
-           if i > 0 and JointPoints[i] != JointPoints[i - 1]:
+           if (i > 0 and JointPoints[i] != JointPoints[i - 1]) or (i == 0):
                q3.append(JointPoints[i][2])
 
        # массивы координат каждой оси
        q1 = np.array(q1)
        q2 = np.array(q2)
        q3 = np.array(q3)
+       print(q1)
+       print(q2)
+
        import plotly.graph_objects as go
        import plotly.express as px
 
@@ -316,7 +319,7 @@ if __name__ == "__main__":
        print('Starting spline fitting...')
        s = 0.0
        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
-       i = 3
+       i = 0
        s = 0.01
        w1 = np.full(len(q1), fill_value=1000000)
        w2 = w1
@@ -348,7 +351,7 @@ if __name__ == "__main__":
                        Vq1.append(BSplines[0].derivatives(T[i])[1])
                        Aq1.append(BSplines[0].derivatives(T[i])[2])
                        Jq1.append(BSplines[0].derivatives(T[i])[3])
-                   i = 3
+                   i = 0
                    print(len(knots))
                else:
                    i += 1
@@ -387,7 +390,7 @@ if __name__ == "__main__":
                print('q1 fit error', e)
                i += 1
        T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
-       i = 1
+       i = 0
        s = 0.1
        while i < (len(q2)):
            # knots = utilities.generate_knot_vector(5, len(q2))
@@ -415,7 +418,7 @@ if __name__ == "__main__":
                        Aq2.append(BSplines[1].derivatives(T[i])[2])
                        Jq2.append(BSplines[1].derivatives(T[i])[3])
                    print(Vq2)
-                   i = 3
+                   i = 0
                else:
                    i += 1
            except Exception as e:
@@ -452,7 +455,7 @@ if __name__ == "__main__":
                print('q2 fit error', e)
                i += 1
        T = planTime(times, CartesianPoints, MoveList, Jmax, q3, CurrentStartTime)
-       i = 1
+       i = 0
        print(len(q1), len(Jq1), len(q2), len(Jq2), len(q3), len(Jq3))
        s = 0.1
        while i < (len(q3)):
@@ -478,7 +481,7 @@ if __name__ == "__main__":
                        Vq3.append(BSplines[2].derivatives(T[i])[1])
                        Aq3.append(BSplines[2].derivatives(T[i])[2])
                        Jq3.append(BSplines[2].derivatives(T[i])[3])
-                   i = 3
+                   i = 0
                else:
                    i += 1
            except Exception as e:
@@ -506,7 +509,7 @@ if __name__ == "__main__":
                        Vq3.append(BSplines[2].derivatives(T[i])[1])
                        Aq3.append(BSplines[2].derivatives(T[i])[2])
                        Jq3.append(BSplines[2].derivatives(T[i])[3])
-                   i = 3
+                   i = 0
                else:
                    i += 1
            except Exception as e:
@@ -530,6 +533,8 @@ if __name__ == "__main__":
        #     q1der[-1] = [q1[-1], 0, 0, -Jmax]
        # else:
        #     q1der[-1] = [q1[-1], 0, 0, Jmax]
+       print(q1)
+       print(q2)
 
        realspeed = []
        realspeed.append([])

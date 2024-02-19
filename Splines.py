@@ -113,7 +113,7 @@ def OptimizeNURBS(points):
     b.append(x)
     b.append(y)
     b.append(z)
-    res = splprep(b, w=None, u=None, ub=None, ue=None, k=2, task=0, s=0.1, t=None, full_output=0, nest=None, per=0, quiet=1)
+    res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=0.1, t=None, full_output=0, nest=None, per=0, quiet=1)
     tck = res
     derivatives = spalde(tck[1], tck[0])
     res = splev(res[1], res[0])

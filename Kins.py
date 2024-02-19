@@ -12,48 +12,50 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
     if kins == 'SCARA':
         pointsOut = []
         i = 1
+        SumLenSqrd = L1 * L1 + L2 * L2
+        ProdOfLens = 2 * L1 * L2
+        DiffLenSqrd = L1 * L1 - L2 * L2
+        theta_S_prev = 0
+        theta_E_prev = 0
         while (i < len(pointsIn)):
             x = pointsIn[i][0]
             y = pointsIn[i][1]
             z = pointsIn[i][2]
-            q3 = z
-            dist_dist = x ** 2 + y ** 2
-            dist = np.sqrt(dist_dist)
-            if dist > L1 + L2:
-                raise ValueError("Позиция недостижимма {}".format([x, y, z]))
-            # print((x**2 + y**2 - L1**2 - L2**2) / (2 * L1 * L2))
-            print(x, y, L1, L2)
-            ctheta2 = ((x ** 2 + y ** 2 - L1 ** 2 - L2 ** 2) / (2 * L1 * L2))
-            stheta2 = math.sqrt(1 - math.pow(ctheta2, 2))
-            ctheta1 =  (x * (L1 + L2 * ctheta2) + y * L2 * stheta2) / (x**2 + y**2)
+            lefthand = 0
+            Temp1 = x * x + y * y
+            Temp2 = (Temp1 - SumLenSqrd) / ProdOfLens
+            if (abs(Temp2) <= 1):
+                # Inverse Kinematics
+                # if (x > 0):  # always gives right hand calculation
+                #     x = -x
+                #     lefthand = 1
+                if(x<0): #do right hand calculation(positive arc cos)
+                    x=x
+                    righthand=1
 
-            theta1a, theta1b = calcAngle(ctheta1)
-            theta2a, theta2b = calcAngle(ctheta2)
+                theta_E = math.acos(Temp2)
+                theta_Q = math.acos((Temp1 + DiffLenSqrd) / (2 * L1 * math.sqrt(Temp1)))
+                arctan = math.atan2(y, x)
+                theta_S = arctan - theta_Q
+                print('Q1', theta_E, 'Q2', theta_S)
+                if (y < 0 and lefthand == 0):
+                    theta_S = 2 * math.pi + theta_S
+                if (lefthand == 1):
+                    theta_E = -theta_E
+                    theta_S = math.pi - theta_S
+                    if (y < 0):
+                        theta_S = theta_S - 2 * math.pi
+                    lefthand = 0
+                if (theta_S < 0 or theta_S > math.pi):
+                    print("Joint0 limit exceeded! Try lowering y coordinate")
+                # motor control
 
+                q1 = theta_S
+                q2 = theta_E 
+                q3 = z
+                theta_S_prev = q1
+                theta_E_prev = q2
 
-
-            q1 = np.arctan2(y, x) - np.arccos((dist_dist + L2 ** 2 - L1 ** 2) / (2 * L2 * dist))
-            q2 = np.arccos((dist_dist - L2 ** 2 - L1 ** 2) / (2 * L2 * L1))
-
-
-            #q1 = theta1a
-            #q2 = theta2a
-            # q1 = q1 - q2
-            # q2 = -q2
-
-
-
-
-            # if ((x >= 0) and (y >= 0)):
-            #     q1 = math.radians(90) - q1
-            # if ((x < 0) and (y > 0)):
-            #     q1 = math.radians(90) - q1
-            # if ((x < 0) and (y < 0)):
-            #     q1 = math.radians(270) - q1
-            # if ((x > 0) and (y < 0)):
-            #     q1 = math.radians(-90) - q1
-            # if ((x < 0) and (y == 0)):
-            #     q1 = math.radians(270) + q1
             if (q1) < limits[0][0] or (q1) > limits[0][1]:
                 raise ValueError("Данная точка нарушает лимиты q1 = {}".format(math.degrees(q1)))
             if (q2) < limits[1][0] or (q2) > limits[1][1]:
@@ -61,7 +63,6 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
             if q3 < limits[2][0] or q3 > limits[2][1]:
                 raise ValueError("Данная точка нарушает лимиты q3 = {}".format((q3)))
             pointsOut.append([q1, q2, q3])
-
             i += 1
         return pointsOut
     elif kins == 'TRIV':
@@ -107,7 +108,7 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
             pointsOut.append([x, y, z])
             i += 1
     return pointsOut
-def ForwardKins(pos, b, a, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
+def ForwardKins(pos, a, b, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
     if kins == 'SCARA':
         alpha = pos[0]
         beta = pos[1]
