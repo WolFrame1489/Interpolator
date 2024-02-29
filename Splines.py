@@ -126,12 +126,12 @@ def OptimizeNURBS(points):
     End = False
     smoothing = 0
     j = 1
-    smoothing = 1
+    smoothing = 0.001
     for i in range(len(res)):
         v.append(list([res[0][i], res[1][i], res[2][i]]))
     while not End:
         if ((derivatives[0][j][2] > 10000000) and (derivatives[1][j][2] > 10000000) and (derivatives[2][j][2] > 10000000)):
-            smoothing *= 1.1
+            smoothing *= 1.05
             res = splprep(b, w=None, u=None, ub=None, ue=None, k=5, task=0, s=smoothing, t=None, full_output=0, nest=None,
                           per=0, quiet=1)
             tck = res

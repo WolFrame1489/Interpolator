@@ -52,8 +52,8 @@ if __name__ == "__main__":
        DeltaRE = 2320.0
        DeltaF = 4570.0
        DeltaE = 1150.0
-       Jmax  =  30.5
-       Amax = 3.5
+       Jmax  =  10.5
+       Amax = 5.5
        Vmax = 10.5
        Vmove = 0.005
        Tpredict = 0.00035
@@ -64,11 +64,11 @@ if __name__ == "__main__":
        realy = []
        JointPoints = []
        if len(CartesianPoints) < 1:
-            CurrentPos = [650.0, 0.0, 0.0, 1]  # начальная позиция робота
+            CurrentPos = [-320.0, 300.0, 0.0, 1]  # начальная позиция робота
        else:
            CurrentPos = CartesianPoints[-1]
            CurrentPos.append(1)
-       Kinematics = 'SCARA'
+       Kinematics = 'TRIV'
 
        filename = 'testtraj.cpt'
        gcodeFileName = prg[segment]  # TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
@@ -90,7 +90,7 @@ if __name__ == "__main__":
        SumTime = sum(times)
        print(SumTime, times)
        PointsAmount = math.ceil(1 / (SumTime) * len(
-           times) * 100000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
+           times) * 10000000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
        CartesianPoints = []
        deviation = 30
 
@@ -330,11 +330,11 @@ if __name__ == "__main__":
            try:
                if (abs(Jq1[i]) > (Jmax + 0.0001)):
                    print('jerk1', Jq1[i], i)
-                   s *= 1.1
+                   s *= 1.01
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   w1[i] /= 5.1
+                   w1[i] /= 1.1
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
@@ -361,11 +361,11 @@ if __name__ == "__main__":
            try:
                if (abs(Aq1[i]) > Amax):
                    print('accel1', Aq1[i], i)
-                   s *= 1.1
+                   s *= 1.01
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   w1[i] /= 5.1
+                   w1[i] /= 1.1
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
@@ -400,13 +400,13 @@ if __name__ == "__main__":
                    Jq2 = []
                    Aq2 = []
                    Vq2 = []
-                   s *= 1.1
+                   s *= 1.01
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
                    print(len(T), len(q2))
-                   w2[i] /= 5.1
+                   w2[i] /= 1.1
                    BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    q2 = BSplines[1](T)
                    axis2tck = BSplines[1]
@@ -430,13 +430,13 @@ if __name__ == "__main__":
                    Jq2 = []
                    Aq2 = []
                    Vq2 = []
-                   s *= 1.1
+                   s *= 1.01
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
                    print(len(T), len(q2))
-                   w2[i] /= 5.1
+                   w2[i] /= 1.1
                    BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    axis2tck = BSplines[1]
                    q2 = BSplines[1](T)
@@ -462,7 +462,7 @@ if __name__ == "__main__":
            try:
                if (abs(Jq3[i]) > (Jmax + 0.0001)):
                    print('jerk3', Jq3[i], i)
-                   s *= 1.1
+                   s *= 1.01
                    Jq3 = []
                    Aq3 = []
                    Vq3 = []
@@ -470,7 +470,7 @@ if __name__ == "__main__":
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   w3[i] /= 5.1
+                   w3[i] /= 1.1
                    BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                    axis3tck = BSplines[2]
                    q3 = BSplines[2](T)
@@ -493,12 +493,12 @@ if __name__ == "__main__":
                    Jq3 = []
                    Aq3 = []
                    Vq3 = []
-                   s *= 1.1
+                   s *= 1.01
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   w3[i] /= 5.1
+                   w3[i] /= 1.1
                    BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                    q3 = BSplines[2](T)
                    axis3tck = BSplines[2]
@@ -891,13 +891,13 @@ if __name__ == "__main__":
            file = open('axis1res.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
-               file.write(bytearray(np.float32(Axis1FinalSpeed[i])))
+               file.write(bytearray(np.float32((Axis1FinalSpeed[i]) * 95)))
            file.close()
            file = open('axis1pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
                print((np.float32(Axis1FinalPos[i])))
-               file.write(bytearray(np.float32(Axis1FinalPos[i]  - (math.pi / 2))))
+               file.write(bytearray(np.float32((Axis1FinalPos[i]))))
            file.close()
            # for i in range(len(timeaxis)):
            #   file.write(str(timeaxis[i]) + ';' + str(Axis1FinalPos[i]) + ';'  + str(Axis1FinalSpeed[i]) + ';'  + str(Axis1FinalAcc[i]) + ';' + '\n')
@@ -926,12 +926,12 @@ if __name__ == "__main__":
            file = open('axis2res.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 2')
-               file.write(bytearray(np.float32(Axis2FinalSpeed[i]  * 1)))
+               file.write(bytearray(np.float32((Axis2FinalSpeed[i] * 51))))
            file.close()
            file = open('axis2pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
-               file.write(bytearray(np.float32(Axis2FinalPos[i] * 1)))
+               file.write(bytearray(np.float32((Axis2FinalPos[i] * 1))))
            file.close()
            # CommAxis3TCK += axis3tck
            # tempspline = BSpline(axis3tck[0], axis3tck[1], 2)
@@ -957,13 +957,13 @@ if __name__ == "__main__":
            file = open('axis3res.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 3')
-               file.write(bytearray(np.float32(Axis3FinalSpeed[i] * 1)))
+               file.write(bytearray(np.float32(math.degrees(Axis3FinalSpeed[i]))))
            file.close()
            file = open('axis3pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
                if Kinematics == 'SCARA':
-                   file.write(bytearray(np.float32(Axis3FinalPos[i] )))
+                   file.write(bytearray(np.float32(math.degrees(Axis3FinalPos[i] ))))
                else:
                    file.write(bytearray(np.float32(Axis3FinalPos[i] * 1)))
            file.close()
