@@ -126,7 +126,7 @@ def OptimizeNURBS(points):
     End = False
     smoothing = 0
     j = 1
-    smoothing = 0.001
+    smoothing = 0.000000000000001
     for i in range(len(res)):
         v.append(list([res[0][i], res[1][i], res[2][i]]))
     while not End:

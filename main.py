@@ -10,6 +10,7 @@ from TimeFeedratePlan import planTime
 from Kins import InvKins,ScaraInvKins2, ForwardKins, ForwardSpeedKins
 from scipy.interpolate import make_interp_spline, PPoly, BSpline, splprep, UnivariateSpline, spalde, splev
 import os
+
 import csv
 import matplotlib.pyplot as plt
 
@@ -52,8 +53,8 @@ if __name__ == "__main__":
        DeltaRE = 2320.0
        DeltaF = 4570.0
        DeltaE = 1150.0
-       Jmax  =  10.5
-       Amax = 5.5
+       Jmax  =  150.5
+       Amax = 50.5
        Vmax = 10.5
        Vmove = 0.005
        Tpredict = 0.00035
@@ -68,7 +69,7 @@ if __name__ == "__main__":
        else:
            CurrentPos = CartesianPoints[-1]
            CurrentPos.append(1)
-       Kinematics = 'TRIV'
+       Kinematics = 'SCARA'
 
        filename = 'testtraj.cpt'
        gcodeFileName = prg[segment]  # TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
@@ -90,7 +91,7 @@ if __name__ == "__main__":
        SumTime = sum(times)
        print(SumTime, times)
        PointsAmount = math.ceil(1 / (SumTime) * len(
-           times) * 10000000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
+           times) * 100000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
        CartesianPoints = []
        deviation = 30
 
@@ -320,7 +321,10 @@ if __name__ == "__main__":
        s = 0.0
        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
        i = 0
-       s = 0.01
+       if Kinematics == 'SCARA':
+           s = 0.00000000000001
+       else:
+           s = 0.001
        w1 = np.full(len(q1), fill_value=1000000)
        w2 = w1
        w3 = w1
@@ -334,7 +338,7 @@ if __name__ == "__main__":
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   w1[i] /= 1.1
+                   w1[i] /= 1.01
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
@@ -365,7 +369,7 @@ if __name__ == "__main__":
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   w1[i] /= 1.1
+                   w1[i] /= 1.01
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
@@ -391,7 +395,10 @@ if __name__ == "__main__":
                i += 1
        T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
        i = 0
-       s = 0.1
+       if Kinematics == 'SCARA':
+           s = 0.00000000000001
+       else:
+           s = 0.001
        while i < (len(q2)):
            # knots = utilities.generate_knot_vector(5, len(q2))
            try:
@@ -406,7 +413,7 @@ if __name__ == "__main__":
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
                    print(len(T), len(q2))
-                   w2[i] /= 1.1
+                   w2[i] /= 1.01
                    BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    q2 = BSplines[1](T)
                    axis2tck = BSplines[1]
@@ -436,7 +443,7 @@ if __name__ == "__main__":
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
                    print(len(T), len(q2))
-                   w2[i] /= 1.1
+                   w2[i] /= 1.01
                    BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    axis2tck = BSplines[1]
                    q2 = BSplines[1](T)
@@ -457,7 +464,10 @@ if __name__ == "__main__":
        T = planTime(times, CartesianPoints, MoveList, Jmax, q3, CurrentStartTime)
        i = 0
        print(len(q1), len(Jq1), len(q2), len(Jq2), len(q3), len(Jq3))
-       s = 0.1
+       if Kinematics == 'SCARA':
+           s = 0.00000000000001
+       else:
+           s = 0.001
        while i < (len(q3)):
            try:
                if (abs(Jq3[i]) > (Jmax + 0.0001)):
@@ -470,7 +480,7 @@ if __name__ == "__main__":
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   w3[i] /= 1.1
+                   w3[i] /= 1.01
                    BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                    axis3tck = BSplines[2]
                    q3 = BSplines[2](T)
@@ -498,7 +508,7 @@ if __name__ == "__main__":
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   w3[i] /= 1.1
+                   w3[i] /= 1.01
                    BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                    q3 = BSplines[2](T)
                    axis3tck = BSplines[2]
@@ -727,13 +737,17 @@ if __name__ == "__main__":
        vp = []
        j1 = []
        realspeed = []
+       temp = []
        realspeed.append([])
        realspeed.append([])
        realspeed.append([])
        realspeed[0].append(0)
        realspeed[1].append(0)
        realspeed[2].append(0)
-       temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 250, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
+       temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 250, 'SCARA', re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
+       # temp.append(diff(realpoints[0], T))
+       # temp.append(diff(realpoints[1], T))
+       # temp.append(diff(realpoints[2], T))
        realspeed[0] = temp[0]
        realspeed[1] = temp[1]
        realspeed[2] = temp[2]

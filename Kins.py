@@ -204,14 +204,16 @@ def ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, a, b, kins:str, *args, **kwargs):
             Vz.append(-Vq3[i])
         i = 0
         for i in range(min(len(Vq1), len(Vq2))):
-            temp = Vq1[i] * (-b * math.sin(q1[i] + q2[i]) - a * math.sin(q1[i]))
-            temp = temp + (-b * math.sin(q1[i] + q2[i])) * Vq2[i]
+            #temp = Vq1[i] * (-b * math.sin(q1[i] + q2[i]) - a * math.sin(q1[i]))
+            #temp = temp + (-b * math.sin(q1[i] + q2[i])) * Vq2[i]
+            temp = -a * Vq1[i] * math.sin(q1[i]) - b * (Vq1[i] + Vq2[i]) * math.sin(q1[i] + q2[i])
             Vx.append(temp)
         i = 0
         temp = 0
         for i in range(min(len(Vq1), len(Vq2))):
-            temp = Vq1[i] * (b * math.cos(q1[i] + q2[i]) - a * math.cos(q1[i]))
-            temp = temp + (b * math.cos(q1[i] + q2[i])) * Vq2[i]
+            # temp = Vq1[i] * (b * math.cos(q1[i] + q2[i]) - a * math.cos(q1[i]))
+            # temp = temp + (b * math.cos(q1[i] + q2[i])) * Vq2[i]
+            temp = a * Vq1[i] * math.cos(q1[i]) + b * (Vq1[i] + Vq2[i]) * math.cos(q1[i] + q2[i])
             Vy.append(temp)
         return (Vx, Vy, Vz)
     elif kins == 'TRIV' or 'DELTA':
