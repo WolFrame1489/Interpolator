@@ -169,7 +169,8 @@ def ForwardKins(pos, a, b, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
         x = g1 * z + e1
         y = g2 * z+ e2
         return [x, y, z]
-
+    elif kins == '6AXIS':
+        return 0
 def ScaraInvKins2(pos, a, b, c, limits, negative_elbow_angle=False):
     x = pos[0]
     y = pos[1]
