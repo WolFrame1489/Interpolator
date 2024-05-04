@@ -8,7 +8,7 @@ from GCodeHandler import HandleGCode, weight, MoveList
 from Splines import CreateNURBSCurve, PrepareBSpline, RebuildSpline, OptimizeNURBS
 from TimeFeedratePlan import planTime
 from Kins import InvKins,ScaraInvKins2, ForwardKins, ForwardSpeedKins
-from scipy.interpolate import make_interp_spline, PPoly, BSpline, splprep, UnivariateSpline, spalde, splev
+from scipy.interpolate import make_interp_spline, InterpolatedUnivariateSpline
 import os
 
 import csv
@@ -53,12 +53,12 @@ if __name__ == "__main__":
        DeltaRE = 2320.0
        DeltaF = 4570.0
        DeltaE = 1150.0
-       Jmax  =  150.5
-       Amax = 50.5
-       Vmax = 10.5
+       Jmax  =  9.75
+       Amax = 3.65
+       Vmax = 9.55
        Vmove = 0.005
-       Tpredict = 0.00035
-       PosCycleTime = 0.000400  # время такта контура позиции
+       Tpredict = 0.00075
+       PosCycleTime = 0.00040  # время такта контура позиции
        GCodeHandler.weight = 1.0  # вес начальной точки
        realx = []
        y = []
@@ -91,7 +91,7 @@ if __name__ == "__main__":
        SumTime = sum(times)
        print(SumTime, times)
        PointsAmount = math.ceil(1 / (SumTime) * len(
-           times) * 100000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
+           times) * 1000000)  # делаем грубое количество точек, чтобы потом решить сколько нам реально надо
        CartesianPoints = []
        deviation = 30
 
@@ -105,6 +105,16 @@ if __name__ == "__main__":
            IdealpointsX.append(CartesianPoints[i][0])
            IdealpointsY.append(CartesianPoints[i][1])
            IdealpointsZ.append(CartesianPoints[i][2])
+       file = open('IdealPointsX.txt', 'w')
+       for i in range(len(IdealpointsX)):
+           # print('writing file 1')
+           file.write((str(IdealpointsX[i])) + '\n')
+       file.close()
+       file = open('IdealPointsY.txt', 'w')
+       for i in range(len(IdealpointsY)):
+           # print('writing file 1')
+           file.write((str(IdealpointsY[i])) + '\n')
+       file.close()
        print('geomdl finished...')
        print('optimizing NURBS...')
        OptimizedPoints = OptimizeNURBS(CartesianPoints)
@@ -118,9 +128,11 @@ if __name__ == "__main__":
        for i in range(len(OptimizedPoints[0])):
            CartesianPoints.append([OptimizedPoints[0][i], OptimizedPoints[1][i], OptimizedPoints[2][i]])
        import plotly.express as px
-
-       fig = px.scatter(x=OptimizedPoints[0], y=OptimizedPoints[1], title="BSPLINETEST")
+       T = planTime(times, CartesianPoints, MoveList, Jmax, CartesianPoints, CurrentStartTime)
+       test = dxdt(np.array(OptimizedPoints[0]), np.array(T))
+       fig = px.scatter(x=T, y=test, title="BSPLINETEST")
        fig.show()
+
        JointPoints = InvKins(CartesianPoints,  400, 250, 100, Limits, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                              f=DeltaF)  # делаем ОЗК по полученным точкам
        x = []
@@ -140,8 +152,7 @@ if __name__ == "__main__":
        q1 = np.array(q1)
        q2 = np.array(q2)
        q3 = np.array(q3)
-       print(q1)
-       print(q2)
+
 
        import plotly.graph_objects as go
        import plotly.express as px
@@ -322,7 +333,7 @@ if __name__ == "__main__":
        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
        i = 0
        if Kinematics == 'SCARA':
-           s = 0.00000000000001
+           s = 0.0000001
        else:
            s = 0.001
        w1 = np.full(len(q1), fill_value=1000000)
@@ -330,15 +341,14 @@ if __name__ == "__main__":
        w3 = w1
        # здесь  начинаем подбирать коэф. сглаживания, чтобы траектория удовлетворяла ограничениям
        while i < (len(q1)):
-           print(len(Jq1))
            try:
-               if (abs(Jq1[i]) > (Jmax + 0.0001)):
+               if (abs(Jq1[i]) > (Jmax + 0.01)):
                    print('jerk1', Jq1[i], i)
                    s *= 1.01
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   w1[i] /= 1.01
+                   w1[i] /= 1.51
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
@@ -348,28 +358,53 @@ if __name__ == "__main__":
                    u = 3
                    axis1tck = BSplines[0]
                    q1 = BSplines[0](T)
-                   print(q1)
-                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
-                   #t1 = spalde(T, BSplines[0])
                    for i in range(len(q1)):
                        Vq1.append(BSplines[0].derivatives(T[i])[1])
                        Aq1.append(BSplines[0].derivatives(T[i])[2])
                        Jq1.append(BSplines[0].derivatives(T[i])[3])
+                   CartesianPoints = []
+                   CartesianPoints.append([])
+                   for i in range((min(len(q1), len(q2), len(q3)))):
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[0])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[1])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[2])
+                       CartesianPoints.append([])
+                   T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
+                   # BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
+                   # Jq1 = []
+                   # Aq1 = []
+                   # Vq1 = []
+                   # for i in range(len(q1)):
+                   #     Vq1.append(BSplines[0].derivatives(T[i])[1])
+                   #     Aq1.append(BSplines[0].derivatives(T[i])[2])
+                   #     Jq1.append(BSplines[0].derivatives(T[i])[3])
+                   # q1 = BSplines[0](T)
+                   # axis1tck = BSplines[0]
+                   # # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   # #t1 = spalde(T, BSplines[0])
                    i = 0
-                   print(len(knots))
                else:
                    i += 1
            except Exception as e:
                print('q1 fit error', e)
                i += 1
            try:
-               if (abs(Aq1[i]) > Amax):
+               if (abs(Aq1[i]) > (Amax + 0.001)):
                    print('accel1', Aq1[i], i)
                    s *= 1.01
                    Jq1 = []
                    Aq1 = []
                    Vq1 = []
-                   w1[i] /= 1.01
+                   w1[i] /= 1.51
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
@@ -377,17 +412,43 @@ if __name__ == "__main__":
                    BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
                    # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
                    u = 3
-                   axis1tck = BSplines[0]
-                   q1 = BSplines[0](T)
-                   print(q1)
-
-                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
-                   #t1 = spalde(T, BSplines[0])
                    for i in range(len(q1)):
                        Vq1.append(BSplines[0].derivatives(T[i])[1])
                        Aq1.append(BSplines[0].derivatives(T[i])[2])
                        Jq1.append(BSplines[0].derivatives(T[i])[3])
-                   i = 3
+                   axis1tck = BSplines[0]
+                   q1 = BSplines[0](T)
+                   CartesianPoints = []
+                   CartesianPoints.append([])
+                   for i in range((min(len(q1), len(q2), len(q3)))):
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[0])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[1])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[2])
+                       CartesianPoints.append([])
+                   T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
+                   # BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
+                   # Jq1 = []
+                   # Aq1 = []
+                   # Vq1 = []
+                   # for i in range(len(q1)):
+                   #     Vq1.append(BSplines[0].derivatives(T[i])[1])
+                   #     Aq1.append(BSplines[0].derivatives(T[i])[2])
+                   #     Jq1.append(BSplines[0].derivatives(T[i])[3])
+                   # q1 = BSplines[0](T)
+                   # axis1tck = BSplines[0]
+                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   #t1 = spalde(T, BSplines[0])
+
+                   i = 0
                else:
                    i += 1
            except Exception as e:
@@ -396,40 +457,61 @@ if __name__ == "__main__":
        T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
        i = 0
        if Kinematics == 'SCARA':
-           s = 0.00000000000001
+           s = 0.0000001
        else:
            s = 0.001
        while i < (len(q2)):
-           # knots = utilities.generate_knot_vector(5, len(q2))
-           try:
-               if (abs(Jq2[i]) > (Jmax + 0.0001)):
-                   print('jerk2', Jq2[i], i)
-                   Jq2 = []
-                   Aq2 = []
-                   Vq2 = []
-                   s *= 1.01
-                   # T = np.delete(T, i)
-                   # q1 = np.delete(q1, i)
-                   # q2 = np.delete(q2, i)
-                   # q3 = np.delete(q3, i)
-                   print(len(T), len(q2))
-                   w2[i] /= 1.01
-                   BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
-                   q2 = BSplines[1](T)
-                   axis2tck = BSplines[1]
-                   #print(q2)
-                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
-                   #t1 = spalde(T, BSplines[0])
-                   for i in range(len(q2)):
-                       Vq2.append(BSplines[1].derivatives(T[i])[1])
-                       Aq2.append(BSplines[1].derivatives(T[i])[2])
-                       Jq2.append(BSplines[1].derivatives(T[i])[3])
-                   print(Vq2)
-                   i = 0
-               else:
-                   i += 1
-           except Exception as e:
-               print('q2 fit error', e)
+           if (abs(Jq2[i]) > (Jmax + 0.0001)):
+               print('jerk2', Jq2[i], i)
+               Jq2 = []
+               Aq2 = []
+               Vq2 = []
+               s *= 1.1
+               # T = np.delete(T, i)
+               # q1 = np.delete(q1, i)
+               # q2 = np.delete(q2, i)
+               # q3 = np.delete(q3, i)
+               w2[i] /= 1.51
+               BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
+               q2 = BSplines[1](T)
+               for i in range(len(q2)):
+                   Vq2.append(BSplines[1].derivatives(T[i])[1])
+                   Aq2.append(BSplines[1].derivatives(T[i])[2])
+                   Jq2.append(BSplines[1].derivatives(T[i])[3])
+               CartesianPoints = []
+               CartesianPoints.append([])
+               axis2tck = BSplines[1]
+               for i in range((min(len(q1), len(q2), len(q3)))):
+                   CartesianPoints[i].append(
+                       (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                    e=DeltaE,
+                                    f=DeltaF))[0])
+                   CartesianPoints[i].append(
+                       (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                    e=DeltaE,
+                                    f=DeltaF))[1])
+                   CartesianPoints[i].append(
+                       (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                    e=DeltaE,
+                                    f=DeltaF))[2])
+                   CartesianPoints.append([])
+               T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
+               # BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
+               # Jq2 = []
+               # Aq2 = []
+               # Vq2 = []
+               # q2 = BSplines[1](T)
+               # axis2tck = BSplines[1]
+               # for i in range(len(q2)):
+               #     Vq2.append(BSplines[1].derivatives(T[i])[1])
+               #     Aq2.append(BSplines[1].derivatives(T[i])[2])
+               #     Jq2.append(BSplines[1].derivatives(T[i])[3])
+               # axis2tck = BSplines[1]
+               # print(q2)
+               # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+               # t1 = spalde(T, BSplines[0])
+               i = 0
+           else:
                i += 1
            try:
                if (abs(Aq2[i]) > Amax):
@@ -437,25 +519,51 @@ if __name__ == "__main__":
                    Jq2 = []
                    Aq2 = []
                    Vq2 = []
-                   s *= 1.01
+                   s *= 1.1
                    # T = np.delete(T, i)
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   print(len(T), len(q2))
-                   w2[i] /= 1.01
+                   w2[i] /= 1.51
                    BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    axis2tck = BSplines[1]
                    q2 = BSplines[1](T)
-                   # print(q2)
-                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
-                   # t1 = spalde(T, BSplines[0])
                    for i in range(len(q2)):
                        Vq2.append(BSplines[1].derivatives(T[i])[1])
                        Aq2.append(BSplines[1].derivatives(T[i])[2])
                        Jq2.append(BSplines[1].derivatives(T[i])[3])
-                   print(Vq2)
-                   i = 3
+                   CartesianPoints = []
+                   CartesianPoints.append([])
+                   for i in range((min(len(q1), len(q2), len(q3)))):
+
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[0])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[1])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[2])
+                       CartesianPoints.append([])
+                   T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
+                   # BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
+                   # q2 = BSplines[1](T)
+                   # axis2tck = BSplines[1]
+                   # Jq2 = []
+                   # Aq2 = []
+                   # Vq2 = []
+                   # for i in range(len(q2)):
+                   #     Vq2.append(BSplines[1].derivatives(T[i])[1])
+                   #     Aq2.append(BSplines[1].derivatives(T[i])[2])
+                   #     Jq2.append(BSplines[1].derivatives(T[i])[3])
+                   # # print(q2)
+                   # # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   # # t1 = spalde(T, BSplines[0])
+                   i = 0
                else:
                    i += 1
            except Exception as e:
@@ -463,9 +571,8 @@ if __name__ == "__main__":
                i += 1
        T = planTime(times, CartesianPoints, MoveList, Jmax, q3, CurrentStartTime)
        i = 0
-       print(len(q1), len(Jq1), len(q2), len(Jq2), len(q3), len(Jq3))
        if Kinematics == 'SCARA':
-           s = 0.00000000000001
+           s = 0.00000001
        else:
            s = 0.001
        while i < (len(q3)):
@@ -480,17 +587,44 @@ if __name__ == "__main__":
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   w3[i] /= 1.01
+                   w3[i] /= 1.51
                    BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                    axis3tck = BSplines[2]
                    q3 = BSplines[2](T)
-                   # print(q2)
-                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
-                   # t1 = spalde(T, BSplines[0])
                    for i in range(len(q3)):
                        Vq3.append(BSplines[2].derivatives(T[i])[1])
                        Aq3.append(BSplines[2].derivatives(T[i])[2])
                        Jq3.append(BSplines[2].derivatives(T[i])[3])
+                   CartesianPoints = []
+                   CartesianPoints.append([])
+                   for i in range((min(len(q1), len(q2), len(q3)))):
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[0])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[1])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[2])
+                       CartesianPoints.append([])
+                   T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
+                   # BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
+                   # axis3tck = BSplines[2]
+                   # Jq3 = []
+                   # Aq3 = []
+                   # Vq3 = []
+                   # q3 = BSplines[2](T)
+                   # for i in range(len(q3)):
+                   #     Vq3.append(BSplines[2].derivatives(T[i])[1])
+                   #     Aq3.append(BSplines[2].derivatives(T[i])[2])
+                   #     Jq3.append(BSplines[2].derivatives(T[i])[3])
+                   # # print(q2)
+                   # # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   # # t1 = spalde(T, BSplines[0])
                    i = 0
                else:
                    i += 1
@@ -508,17 +642,44 @@ if __name__ == "__main__":
                    # q1 = np.delete(q1, i)
                    # q2 = np.delete(q2, i)
                    # q3 = np.delete(q3, i)
-                   w3[i] /= 1.01
+                   w3[i] /= 1.51
                    BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                    q3 = BSplines[2](T)
-                   axis3tck = BSplines[2]
-                   # print(q2)
-                   # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
-                   # t1 = spalde(T, BSplines[0])
                    for i in range(len(q3)):
                        Vq3.append(BSplines[2].derivatives(T[i])[1])
                        Aq3.append(BSplines[2].derivatives(T[i])[2])
                        Jq3.append(BSplines[2].derivatives(T[i])[3])
+                   axis3tck = BSplines[2]
+                   CartesianPoints = []
+                   CartesianPoints.append([])
+                   for i in range((min(len(q1), len(q2), len(q3)))):
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[0])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[1])
+                       CartesianPoints[i].append(
+                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                        e=DeltaE,
+                                        f=DeltaF))[2])
+                       CartesianPoints.append([])
+                   T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
+                   # BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
+                   # Jq3 = []
+                   # Aq3 = []
+                   # Vq3 = []
+                   # axis3tck = BSplines[2]
+                   # q3 = BSplines[2](T)
+                   # for i in range(len(q3)):
+                   #     Vq3.append(BSplines[2].derivatives(T[i])[1])
+                   #     Aq3.append(BSplines[2].derivatives(T[i])[2])
+                   #     Jq3.append(BSplines[2].derivatives(T[i])[3])
+                   # # print(q2)
+                   # # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
+                   # # t1 = spalde(T, BSplines[0])
                    i = 0
                else:
                    i += 1
@@ -543,8 +704,7 @@ if __name__ == "__main__":
        #     q1der[-1] = [q1[-1], 0, 0, -Jmax]
        # else:
        #     q1der[-1] = [q1[-1], 0, 0, Jmax]
-       print(q1)
-       print(q2)
+
 
        realspeed = []
        realspeed.append([])
@@ -744,6 +904,7 @@ if __name__ == "__main__":
        realspeed[0].append(0)
        realspeed[1].append(0)
        realspeed[2].append(0)
+       print(len(q1), len(q2), len(q3), len(Vq1), len(Vq2))
        temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 250, 'SCARA', re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
        # temp.append(diff(realpoints[0], T))
        # temp.append(diff(realpoints[1], T))
@@ -882,10 +1043,13 @@ if __name__ == "__main__":
            #CommAxis1TCK += axis1tck
            # tempspline = BSpline(axis1tck[0], axis1tck[1], 2)
            # testspline = tempspline.construct_fast(axis1tck[0], axis1tck[1], axis1tck[2])
+           testspline = InterpolatedUnivariateSpline(T, q1)
+           axis1tck = testspline
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
            predictlist = np.full(shape=len(timeaxis),fill_value=Tpredict, dtype=np.float64)
            timeaxis = timeaxis - predictlist
            timeaxis[0] = 0.0
+           axis1tck.set_smoothing_factor(0)
            Axis1FinalPos = axis1tck(timeaxis)
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
            Axis1FinalSpeed = axis1tck.derivative(1)
@@ -897,20 +1061,23 @@ if __name__ == "__main__":
            # Axis1Acc += list(Axis1FinalAcc)
            CommonTimeAxis += list(T)
 
-           fig = px.scatter(x=timeaxis, y=Axis1FinalPos, title='Axis 3 pos')
+           fig = go.Figure(
+               data=[go.Scatter(x=timeaxis, y=Axis1FinalPos, name='test setpoints')])
            fig.show()
-
-           print(len(Axis1FinalPos), len(Axis1FinalSpeed))
            i = 0
            file = open('axis1res.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
                file.write(bytearray(np.float32((Axis1FinalSpeed[i]) * 95)))
            file.close()
+           file = open('axis1res.txt', 'w')
+           for i in range(len(timeaxis)):
+               # print('writing file 1')
+               file.write(str(((Axis1FinalPos[i]))) + '\n')
+           file.close()
            file = open('axis1pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
-               print((np.float32(Axis1FinalPos[i])))
                file.write(bytearray(np.float32((Axis1FinalPos[i]))))
            file.close()
            # for i in range(len(timeaxis)):
@@ -920,9 +1087,12 @@ if __name__ == "__main__":
            # testspline = tempspline.construct_fast(axis2tck[0], axis2tck[1], axis2tck[2])
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(SumTime / PosCycleTime))
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
+           testspline = InterpolatedUnivariateSpline(T, q2)
+           axis2tck = testspline
            predictlist = np.full(shape=len(timeaxis), fill_value=Tpredict, dtype=np.float64)
            timeaxis = timeaxis - predictlist
            timeaxis[0] = 0.0
+           axis2tck.set_smoothing_factor(0)
            Axis2FinalPos = axis2tck(timeaxis)
            timeaxis = np.linspace(CurrentStartTime, T[-1], int(T[-1] / PosCycleTime))
            Axis2FinalSpeed = axis2tck.derivative(1)
@@ -932,8 +1102,6 @@ if __name__ == "__main__":
            Axis2Pos += list(Axis2FinalPos)
            Axis2Spd += list(Axis2FinalSpeed)
            Axis2Acc += list(Axis2FinalAcc)
-           fig = px.scatter(x=timeaxis, y=Axis2FinalPos, title='Axis 2 pos')
-           fig.show()
 
            print(len(timeaxis))
            i = 0
@@ -946,6 +1114,11 @@ if __name__ == "__main__":
            for i in range(len(timeaxis)):
                # print('writing file 1')
                file.write(bytearray(np.float32((Axis2FinalPos[i] * 1))))
+           file.close()
+           file = open('axis2res.txt', 'w')
+           for i in range(len(timeaxis)):
+               # print('writing file 1')
+               file.write(str(((Axis2FinalPos[i]))) + '\n')
            file.close()
            # CommAxis3TCK += axis3tck
            # tempspline = BSpline(axis3tck[0], axis3tck[1], 2)
@@ -973,6 +1146,11 @@ if __name__ == "__main__":
                # print('writing file 3')
                file.write(bytearray(np.float32(math.degrees(Axis3FinalSpeed[i]))))
            file.close()
+           file = open('axis3res.txt', 'w')
+           for i in range(len(timeaxis)):
+               # print('writing file 1')
+               file.write(str(str(np.float32((Axis3FinalPos[i])))+ '\n'))
+           file.close()
            file = open('axis3pos.bin', 'wb')
            for i in range(len(timeaxis)):
                # print('writing file 1')
@@ -981,6 +1159,9 @@ if __name__ == "__main__":
                else:
                    file.write(bytearray(np.float32(Axis3FinalPos[i] * 1)))
            file.close()
+           realpoints[0] = []
+           realpoints[1] = []
+           realpoints[2] = []
            for i in range((min(len(Axis1FinalPos), len(Axis2FinalPos), len(Axis3FinalPos)))):
                realpoints[0].append(
                    (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
@@ -991,11 +1172,10 @@ if __name__ == "__main__":
                realpoints[2].append(
                    (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[2])
-           fig = plt.figure()
-           ax = fig.add_subplot(111, projection='3d')
-           ax.plot(realpoints[0], realpoints[1], realpoints[2], label='TEST')
-           plt.show()
            print(np.diff(timeaxis))
+           fig = go.Figure(
+               data=[go.Scatter(x=realpoints[0], y=realpoints[1], name='test setpoints')])
+           fig.show()
            exit(0)
        else:
            Axis1Pos += list(q1)
