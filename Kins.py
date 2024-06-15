@@ -22,6 +22,9 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
             y = pointsIn[i][1]
             z = pointsIn[i][2]
             lefthand = 0
+            q1 = 0
+            q2 = 0
+            q3 = 0
             Temp1 = x * x + y * y
             Temp2 = (Temp1 - SumLenSqrd) / ProdOfLens
             if (abs(Temp2) <= 1):
@@ -37,7 +40,7 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
                 theta_Q = math.acos((Temp1 + DiffLenSqrd) / (2 * L1 * math.sqrt(Temp1)))
                 arctan = math.atan2(y, x)
                 theta_S = arctan - theta_Q
-                print('Q1', theta_E, 'Q2', theta_S)
+                # print('Q1', theta_E, 'Q2', theta_S)
                 if (y < 0 and lefthand == 0):
                     theta_S = 2 * math.pi + theta_S
                 if (lefthand == 1):
@@ -62,7 +65,7 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
                 raise ValueError("Данная точка нарушает лимиты q2 = {}".format(math.degrees(q2)))
             if q3 < limits[2][0] or q3 > limits[2][1]:
                 raise ValueError("Данная точка нарушает лимиты q3 = {}".format((q3)))
-            pointsOut.append([q1, q2, q3])
+            pointsOut.append([q1, q2, q3, 0, 0, 0])
             i += 1
         return pointsOut
     elif kins == 'TRIV':
@@ -72,7 +75,7 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
             x = pointsIn[i][0]
             y = pointsIn[i][1]
             z = pointsIn[i][2]
-            pointsOut.append([x, y, z])
+            pointsOut.append([x, y, z, 0, 0, 0])
             i += 1
         return pointsOut
     elif kins == 'DELTA':
@@ -105,7 +108,210 @@ def InvKins(pointsIn, L1, L2, L3, limits, kins:str, *args, **kwargs):
             x = 0 + (-mu[1][1] - math.sqrt(diskr[1])) / 2
             y = 0 + (-mu[1][2] - math.sqrt(diskr[2])) / 2
             z = 0 + (-mu[1][3] - math.sqrt(diskr[3])) / 2
-            pointsOut.append([x, y, z])
+            pointsOut.append([x, y, z, 0 , 0, 0])
+            i += 1
+    elif kins == 'PUMA':
+        i = 0
+        pointsOut = []
+        flag = False
+        flag2 = False
+        while (i < len(pointsIn)):
+            print(i)
+            a5z = 200
+            a3z = 433.08
+            a3y = 0
+            a2z = 431.8
+            a1y = -149.09
+            a1z = 672
+            b0 = a1y
+            b1 = a3y
+            a0 = a1z
+            a1 = a2z
+            a2 = a3z
+            a6 = a5z
+            Limits = []
+            if not flag:
+                Joints = []
+                flag = False
+                #temp = InvKins([[-320.0, 300.0, 0.0, 1]], 400, 250, 100, Limits, 'PUMA')
+                for k in range(6):
+                    Joints.append(0)
+            x = pointsIn[i][0]
+            y = pointsIn[i][1]
+            z = pointsIn[i][2]
+            ox = 0
+            oy = 0
+            oz = 0
+
+            if not flag2:
+                RIGHTHAND = False
+                TOPFINGER = True
+                TOPHAND = True
+                b0 = 0
+                b1 = 1
+                Px = 0
+                Py = -a6
+                Pz = 0
+                P0x = 0
+                P0y = 0
+                P0z = 0
+                flag2 = False
+            #ox = oy = oz = 0
+            sina = math.sin(oy)
+            cosa = math.cos(oy)
+            xx = P0z * cosa - P0x * sina
+            P0x = P0z * sina + P0x * cosa
+            P0z = xx
+            sina = math.sin(ox)
+            cosa = math.cos(ox)
+            xx = P0y * cosa - P0z * sina
+            P0z = P0y * sina + P0z * cosa
+            P0y = xx
+            sina = math.sin(oz)
+            cosa = math.cos(oz)
+            xx = P0y * cosa - P0x * sina
+            P0x = P0y * sina + P0x * cosa
+            P0y = xx
+            # rot( & P0.z, & P0.x, World->oy);
+            # rot( & P0.y, & P0.z, World->ox);
+            # rot( & P0.y, & P0.x, World->oz);
+            P0x = P0x + x
+            P0y = P0y + y
+            P0z = P0z + z
+
+            Alpha = atan2fz(P0x, P0y)
+            sqrRxy = P0x * P0x + P0y * P0y
+            Rxy = math.sqrt(sqrRxy)
+            if (Rxy / math.fabs(b0 - b1) < 1.0000001):
+                if (b0 < b1):
+                    Alpha0 = -math.pi/ 2
+                else:
+                    Alpha0 = math.pi/ 2
+            else:
+                Alpha0=math.asin((b0 - b1) / Rxy)
+
+            if (RIGHTHAND):
+                Joints[0] = Lead(Alpha - Alpha0, Joints[0])
+            else:
+               Joints[0] = Lead(Alpha0 + Alpha - math.pi, Joints[0])
+
+            sqrRxy = sqrRxy - (b0 - b1) * (b0 - b1)
+            if (sqrRxy < 0):
+                sqrRxy = 0
+                Rxy = 0
+            else:
+                Rxy = math.sqrt(sqrRxy)
+
+            Beta0 = atan2fz(P0z - a0, Rxy)
+            sqrA12 = sqrRxy + (P0z - a0) * (P0z - a0)
+            A = a1 * a1 + a2 * a2 - sqrA12
+            B = 2 * a1 * a2
+            if (math.fabs(A) >= B):
+                if (not RIGHTHAND):
+                    Joints[1] = math.pi / 2 - Beta0
+                else:
+                    Joints[1] = math.pi / 2 + Beta0
+                Joints[2] = 0
+                if ((math.fabs(A)) - B <= 0.000005):
+                    Result = 1
+                else:
+                    Result = 0
+            else:
+                Result = 1;
+                Gamma = math.acos(A / B)
+                Beta = math.acos((a1 * a1 + sqrA12 -a2 * a2) / (2 * a1 * math.sqrt(sqrA12)))
+                if (TOPHAND):
+                    Joints[1] = math.pi/ 2 - Beta - Beta0
+                    Joints[2] = math.pi - Gamma
+                else:
+                    Joints[1] = math.pi/ 2 - Beta0 + Beta
+                    Joints[2] = Gamma - math.pi
+            if (not RIGHTHAND):
+                Joints[1] = -Joints[1]
+                Joints[2] = -Joints[2]
+            ZZx = 0
+            ZZy = 1
+            ZZz = 0
+            YYx = 0
+            YYy = 0
+            YYy = 1
+            YYz = 0
+            sina = math.sin(oy)
+            cosa = math.cos(oy)
+            xx = ZZz * cosa - ZZx * sina
+            ZZx = ZZz * sina + ZZx * cosa
+            ZZz = xx
+            xx = YYz * cosa - YYx * sina
+            YYx = YYz * sina + YYx * cosa
+            YYz = xx
+
+            sina = math.sin(ox)
+            cosa = math.cos(ox)
+            xx = ZZy * cosa - ZZz * sina
+            ZZz = ZZy * sina + ZZz * cosa
+            ZZy = xx
+            xx = YYy * cosa - YYz * sina
+            YYz = YYz * sina + YYy * cosa
+            YYy = xx
+
+            sina = math.sin(oz)
+            cosa = math.cos(oz)
+            xx = ZZy * cosa - ZZx * sina
+            ZZx = ZZy * sina + ZZx * cosa
+            ZZy = xx
+            xx = YYy * cosa - YYx * sina
+            YYx = YYy * sina + YYx * cosa
+            YYy = xx
+
+            sina = math.sin(-Joints[0])
+            cosa = math.cos(-Joints[0])
+            xx = ZZy * cosa - ZZx * sina
+            ZZx = ZZy * sina + ZZx * cosa
+            ZZy = xx
+            xx = YYy * cosa - YYx * sina
+            YYx = YYy * sina + YYx * cosa
+            YYy = xx
+
+            sina = math.sin(-Joints[1])
+            cosa = math.cos(-Joints[1])
+            xx = ZZz * cosa - ZZy * sina
+            ZZy = ZZz * sina + ZZy * cosa
+            ZZz = xx
+            xx = YYz * cosa - YYy * sina
+            YYy = YYz * sina + YYy * cosa
+            YYz = xx
+
+            sina = math.sin(-Joints[2])
+            cosa = math.cos(-Joints[2])
+            xx = ZZz * cosa - ZZy * sina
+            ZZy = ZZz * sina + ZZy * cosa
+            ZZz = xx
+            xx = YYz * cosa - YYy * sina
+            YYy = YYz * sina + YYy * cosa
+            YYz = xx
+            Rxy = math.sqrt(ZZx * ZZx + ZZy * ZZy)
+            if (Rxy < 0.0001):
+                Joints[4]=0
+            else:
+                if (TOPFINGER):
+                    Joints[3] = Lead(atan2fz(ZZx, ZZy), Joints[3])
+                    Joints[4] = atan2fz(Rxy, ZZz)
+                else:
+                    Joints[3] = Lead(atan2fz(ZZx, ZZy) + math.pi, Joints[3])
+                    Joints[4] = atan2fz(-Rxy, ZZz)
+            sina = math.sin(-Joints[3])
+            cosa = math.cos(-Joints[3])
+            xx = YYy * cosa - YYx * sina
+            YYx = YYy * sina + YYx * cosa
+            YYy = xx
+            sina = math.sin(-Joints[4])
+            cosa = math.cos(-Joints[4])
+            xx = YYz * cosa - YYy * sina
+            YYy = YYz * sina + YYy * cosa
+            YYz = xx
+            Joints[5] = Lead(atan2fz(YYx, YYy), Joints[5])
+            pointsOut.append(Joints)
+            #print('SEXSEX', Joints)
             i += 1
     return pointsOut
 def ForwardKins(pos, a, b, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
@@ -169,33 +375,127 @@ def ForwardKins(pos, a, b, c, kins:str, *args, **kwargs):   # c is in 2pi*rad/m
         x = g1 * z + e1
         y = g2 * z+ e2
         return [x, y, z]
-    elif kins == '6AXIS':
-        return 0
-def ScaraInvKins2(pos, a, b, c, limits, negative_elbow_angle=False):
-    x = pos[0]
-    y = pos[1]
-    z = pos[2]
+    elif kins == 'PUMA':
+        a5z = 200
+        a3z = 433.08
+        a3y = 0
+        a2z = 431.8
+        a1y = -149.09
+        a1z = 672
+        Xx = 0
+        Xy = 0
+        Xz = 0
+        Yx = 0
+        Yy = -1
+        Yz = 0
+        Px = 0
+        Py = 0
+        Pz = a5z
+        Zx = 0
+        Zy = 0
+        Zz = 1
+        ox = oy = oz = 0
+        sina = math.sin(pos[5])
+        cosa = math.cos(pos[5])
+        xx = Yy * cosa - Yx * sina
+        Yx = Yy * sina + Yx * cosa
+        Yy = xx
 
-    dist_dist = x**2 + y**2
-    dist = np.sqrt(dist_dist)
+        sina = math.sin(pos[4])
+        cosa = math.cos(pos[4])
+        xx = Pz * cosa - Py * sina
+        Py = Pz * sina + Py * cosa
+        Pz = xx
+        xx = Zz * cosa - Zy * sina
+        Zy = Zz * sina + Zy * cosa
+        Zz = xx
+        xx = Yz * cosa - Yy * sina
+        Yy = Yz * sina + Yy * cosa
+        Yz = xx
 
-    # if the position is too far away, go to furthest possible point in the same direction
-    if dist > a + b:
-        raise ValueError("Позиция недостижима {}".format(pos))
-        x /= dist + np.sqrt(a**2 + b**2)
-        y /= dist + np.sqrt(a**2 + b**2)
-        dist_dist = x**2 + y**2
-        dist = np.sqrt(dist_dist)
-    alpha = np.arctan2(y, x) - np.arccos((dist_dist + a**2 - b**2) / (2*a*dist))
-    beta = np.arccos((dist_dist - a**2 - b**2) / (2 * a * b))
-    print(math.degrees(alpha))
-    print(math.degrees(beta))
-    if not inside_limits((alpha, beta, z), limits):
-        alpha = 2 * np.arctan2(y, x) - alpha
-        beta *= -1
-        if not inside_limits((alpha, beta, z), limits):
-            raise ValueError("Данная точка нарушает лимиты {}".format(pos))
-    return (alpha, beta, z/c)
+        sina = math.sin(pos[3])
+        cosa = math.cos(pos[3])
+        xx = Py * cosa - Px * sina
+        Px = Py * sina + Px * cosa
+        Py = xx
+        xx = Zy * cosa - Zx * sina
+        Zx = Zy * sina + Zx * cosa
+        Zy = xx
+        xx = Yy * cosa - Yx * sina
+        Yx = Yy * sina + Yx * cosa
+        Yy = xx
+
+        Pz = Pz + a3z
+
+        sina = math.sin(pos[2])
+        cosa = math.cos(pos[2])
+        xx = Pz * cosa - Py * sina
+        Py = Pz * sina + Py * cosa
+        Pz = xx
+        xx = Zz * cosa - Zy * sina
+        Zy = Zz * sina + Zy * cosa
+        Zz = xx
+        xx = Yz * cosa - Yy * sina
+        Yy = Yz * sina + Yy * cosa
+        Yz = xx
+
+        Px = Px - a3y
+        Pz = Pz + a2z
+
+        sina = math.sin(pos[1])
+        cosa = math.cos(pos[1])
+        xx = Pz * cosa - Py * sina
+        Py = Pz * sina + Py * cosa
+        Pz = xx
+        xx = Zz * cosa - Zy * sina
+        Zy = Zz * sina + Zy * cosa
+        Zz = xx
+        xx = Yz * cosa - Yy * sina
+        Yy = Yz * sina + Yy * cosa
+        Yz = xx
+
+        Px = Px + a1y
+
+        sina = math.sin(pos[0])
+        cosa = math.cos(pos[0])
+        xx = Py * cosa - Px * sina
+        Px = Py * sina + Px * cosa
+        Py = xx
+        xx = Zy * cosa - Zx * sina
+        Zx = Zy * sina + Zx * cosa
+        Zy = xx
+        xx = Yy * cosa - Yx * sina
+        Yx = Yy * sina + Yx * cosa
+        Yy = xx
+
+        Pz = Pz + a1z
+
+        x = Px
+        y = Py
+        z = Pz
+
+        oz = Lead(math.atan2(Zx, Zy), oz)
+        sina = math.sin(oz)
+        cosa = math.cos(oz)
+        xx = Zx * cosa - Zy * sina
+        Zy = Zy * sina + Zx * cosa
+        Zx = xx
+        xx = Yx * cosa - Yy * sina
+        Yy = Yy * sina + Yx * cosa
+        Yx = xx
+        # rot2( & Z.x, & Z.y, sina, cosa);
+        # rot2( & Y.x, & Y.y, sina, cosa);
+        ox = Lead(atan2fz(Zz, Zy),ox)
+        sina = math.sin(ox)
+        cosa = math.cos(ox)
+        xx = Yz * cosa - Yy * sina
+        Yy = Yz * sina + Yy * cosa
+        Yz = xx
+        # rot( & Y.z, & Y.y, World->ox);
+        oy = Lead(atan2fz(Yx, Yz) + math.pi, oy)
+        #print('ZAZAZA', [x, y, z, ox, oy, oz])
+        return [x, y, z, ox, oy, oz]
+
 def ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, a, b, kins:str, *args, **kwargs):
     Vx = []
     Vy = []
@@ -217,7 +517,7 @@ def ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, a, b, kins:str, *args, **kwargs):
             temp = a * Vq1[i] * math.cos(q1[i]) + b * (Vq1[i] + Vq2[i]) * math.cos(q1[i] + q2[i])
             Vy.append(temp)
         return (Vx, Vy, Vz)
-    elif kins == 'TRIV' or 'DELTA':
+    else:
         for i in range(len(Vq3)):
             Vz.append(Vq3[i])
         for i in range(len(Vq2)):
@@ -241,3 +541,17 @@ def calcAngleYZ(x0, y0, z0, f, e, rf, re):
             theta += 180.0
         return theta
 
+def Lead(A, Ao):
+    A = math.modf(A / 2 / math.pi)[0] * 2 * math.pi
+    Ao = math.modf(A / 2 / math.pi)[0] * 2 * math.pi
+    if (A - Ao > math.pi):
+        A = A - 2 * math.pi
+    if (A - Ao < - math.pi):
+        A = A + 2 * math.pi
+    return A
+def atan2fz (Y,  X):
+    if (math.fabs(Y) < 0.000001):
+        Y = 0
+    if math.fabs(X) < 0.000001:
+        X=0
+    return math.atan2(Y,X)

@@ -11,8 +11,13 @@ while case < 25:
     print(Time)
     runtimelist.append(time.time() - runningtime)
     runningtime = time.time()
-    print(runtimelist[-1])
+    print('TIME',runtimelist[-1])
+    print('============================================')
+    print('============================================')
+    print('CASE', case)
     case += 1
+    print('============================================')
+    print('============================================')
 runtimelist = np.array(runtimelist)
-np.savetxt("triangle.csv", runtimelist, delimiter=",")
-print(Time)
+np.savetxt("smallangle.csv", runtimelist, delimiter=",")
+

@@ -18,7 +18,7 @@ def planTime(times, spline, Movements: list, Amax, splineaxis, StartTime): #ос
     #print(spline)
     print('q1', len(splineaxis))
     while not End:
-        if i < (len(splineaxis) - 1):
+        if i < (len(splineaxis) - 3):
             if T[i] <= (Currenttime + Movements[Counter].time):
                 dt = math.sqrt(sqeuclidean([spline[i][0], spline[i][1], spline[i][2]], [spline[i+1][0], spline[i+1][1], spline[i+1][2]])) / (
                        Movements[Counter].speed)

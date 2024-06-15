@@ -7,8 +7,9 @@ import GCodeHandler
 from GCodeHandler import HandleGCode, weight, MoveList
 from Splines import CreateNURBSCurve, PrepareBSpline, RebuildSpline, OptimizeNURBS
 from TimeFeedratePlan import planTime
-from Kins import InvKins,ScaraInvKins2, ForwardKins, ForwardSpeedKins
+from Kins import InvKins, ForwardKins, ForwardSpeedKins
 from scipy.interpolate import make_interp_spline, InterpolatedUnivariateSpline
+from scipy.signal import medfilt
 import os
 import time
 import csv
@@ -38,7 +39,7 @@ CommAxis3TCK = []
 
 SumTime = 0.0
 #prg = ['line1.txt', 'line2.txt']
-prg = ['triangle.txt']
+prg = ['puma.txt']
 
 segment = 0
 CartesianPoints = []
@@ -48,6 +49,7 @@ runningtime  = time.time()
 runningtimelist = []
 if __name__ == "__main__":
    while testcase < 1:
+       testcase += 1
        while segment < len(prg):
            x = []
            if segment != 0:
@@ -58,9 +60,9 @@ if __name__ == "__main__":
            DeltaRE = 2320.0
            DeltaF = 4570.0
            DeltaE = 1150.0
-           Jmax = 9.75
-           Amax = 3.65
-           Vmax = 9.55
+           Jmax = 8000.075
+           Amax =6000.65
+           Vmax = 900000000.55
            Vmove = 0.005
            Tpredict = 0.00075
            PosCycleTime = 0.00040  # время такта контура позиции
@@ -70,18 +72,21 @@ if __name__ == "__main__":
            realy = []
            JointPoints = []
            if len(CartesianPoints) < 1:
-               CurrentPos = [-320.0, 300.0, 0.0, 1]  # начальная позиция робота
+                #CurrentPos = [-320.0, 300.0, 0.0, 1]  # начальная позиция робота
+                #CurrentPos = [0.0, 0.0, 0.0, 1]
+                CurrentPos = [0.0, 0.0, 900.0, 1]
+
            else:
                CurrentPos = CartesianPoints[-1]
                CurrentPos.append(1)
-           Kinematics = 'SCARA'
+           Kinematics = 'PUMA'
 
            filename = 'testtraj.cpt'
            gcodeFileName = prg[segment]  # TODO: СЮДА ПИСАТЬ ИМЯ ФАЙЛА С G КОДОМ
            print('Linearizing...')
            print('getcwd:      ', os.getcwd())
            os.system(
-               'python pygcode-norm.py  -al -alp 0.00001 -alm i  ' + (
+               'python pygcode-norm.py  -al -alp 0.005 -alm m  ' + (
                            os.getcwd() + '\\' + gcodeFileName))  # линеаризуем файл
            print('Reading G-code....')
            HandleGCode('coderework.txt', CurrentPos, Vmax)  # делаем точки из ж кода и выдаем им веса
@@ -134,14 +139,18 @@ if __name__ == "__main__":
            for i in range(len(OptimizedPoints[0])):
                CartesianPoints.append([OptimizedPoints[0][i], OptimizedPoints[1][i], OptimizedPoints[2][i]])
            import plotly.express as px
-
            T = planTime(times, CartesianPoints, MoveList, Jmax, CartesianPoints, CurrentStartTime)
-           #test = dxdt(np.array(OptimizedPoints[0]), OptimizedPoints[1])
-           fig = px.scatter(x=OptimizedPoints[0], y=OptimizedPoints[1], title="Траектория")
-           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
-           fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
-           fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
-           fig.write_image("triangle.svg")
+           fig = px.scatter_3d(x=OptimizedPoints[0], y=OptimizedPoints[1], z=OptimizedPoints[2], title="Траектория")
+           fig.show()
+           # fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           # fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.write_image("traj1.svg")
+           fig.show(renderer="browser")
+           # fig = px.scatter(x=t, y=test, title="Скорость")
+           # fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           # fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           # fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           # # fig.write_image("house.svg")
            # fig.show(renderer="browser")
            # print(SumTime)
            # exit(0)
@@ -152,6 +161,15 @@ if __name__ == "__main__":
            q1 = []
            q2 = []
            q3 = []
+           q4 = []
+           q5 = []
+           q6 = []
+           realpoints = []
+           realpoints.append([])
+           realpoints.append([])
+           realpoints.append([])
+           import plotly.graph_objects as go
+           import plotly.express as px
            for i in range(len(JointPoints)):
                if (i > 0 and JointPoints[i] != JointPoints[i - 1]) or (i == 0):
                    q1.append(JointPoints[i][0])
@@ -159,14 +177,40 @@ if __name__ == "__main__":
                    q2.append(JointPoints[i][1])
                if (i > 0 and JointPoints[i] != JointPoints[i - 1]) or (i == 0):
                    q3.append(JointPoints[i][2])
-
+               if (i > 0 and JointPoints[i] != JointPoints[i - 1]) or (i == 0):
+                   q4.append(JointPoints[i][3])
+               if (i > 0 and JointPoints[i] != JointPoints[i - 1]) or (i == 0):
+                   q5.append(JointPoints[i][4])
+               if (i > 0 and JointPoints[i] != JointPoints[i - 1]) or (i == 0):
+                   q6.append(JointPoints[i][5])
+           for i in range((min(len(q1), len(q2), len(q3)))):
+               realpoints[0].append(
+                   (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                                f=DeltaF))[0])
+               realpoints[1].append(
+                   (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                                f=DeltaF))[1])
+               realpoints[2].append(
+                   (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                                f=DeltaF))[2])
+           fig = go.Figure(data=[go.Scatter(x=np.linspace(0,len(q1), len(q1)), y=q1,
+                                              name='q1'),go.Scatter(x=np.linspace(0,len(q1), len(q1)), y=q2,
+                                              name='q2'),go.Scatter(x=np.linspace(0,len(q1), len(q1)), y=q3,
+                                              name='q3'),go.Scatter(x=np.linspace(0,len(q1), len(q1)), y=q4,
+                                              name='q4'),go.Scatter(x=np.linspace(0,len(q1), len(q1)), y=q5,
+                                              name='q5'),go.Scatter(x=np.linspace(0,len(q1), len(q1)), y=q6,
+                                              name='q6')
+                                 ])  # go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
+           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           fig.update_layout(font=dict(size=20), xaxis_title="i", yaxis_title="Позиция оси,рад")
+           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.show()
            # массивы координат каждой оси
            q1 = np.array(q1)
            q2 = np.array(q2)
            q3 = np.array(q3)
-
-           import plotly.graph_objects as go
-           import plotly.express as px
 
            fig = px.scatter(x=q1, y=q2, title='SEX')
            #fig.show()
@@ -213,7 +257,7 @@ if __name__ == "__main__":
            Az = []
            testx = []
            knots = T
-
+           runningtime = time.time()
            print('Creating polynome splines of speed etc...')
            i = 0
            BSplines = PrepareBSpline(q1, q2, q3, T, 1, 0.0, ideal=True)
@@ -246,7 +290,7 @@ if __name__ == "__main__":
                print(T)
                print(Vq3)
                exit(0)
-           print('TESTING', len(Jq1), len(Jq2), len(Jq3))
+           print('TESTING', time.time() - runningtime)
            # while (u < (len(knots)) - 4):
            #    Vq1.append((5 * Coefficients[0][0][u] * ((knots[u] / len(knots)) ** 4))+ (4 * Coefficients[0][1][u] * ((knots[u] / len(knots)) ** 3)) \
            #               + (3 * Coefficients[0][2][u] * ((knots[u] / len(knots)) ** 2)) \
@@ -298,17 +342,20 @@ if __name__ == "__main__":
            realspeed[0] = temp[0]
            realspeed[1] = temp[1]
            realspeed[2] = temp[2]
-           # for i in range(len(realspeed[2])):
-           #     print(i)
-           #     vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
-           #     T = list(T)
-           # while len(T) > len(vp):
-           #     print(len(T), len(vp))
-           #     T.pop()
-           # fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp)
-           # fig.show()
-           # fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
-           # fig.show()
+           for i in range(len(realspeed[2])):
+               print(i)
+               vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
+               T = list(T)
+           while len(T) > len(vp):
+               print(len(T), len(vp))
+               T.pop()
+           fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp)
+           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.show()
+           fig = go.Figure(data=[go.Scatter(x=T, y=Vq1), go.Scatter(x=T, y=Vq2), go.Scatter(x=T, y=Vq3)])
+           fig.show()
            # Vq1 = []
            # Vq2 = []
            # Vq3 = []
@@ -343,15 +390,16 @@ if __name__ == "__main__":
            s = 0.0
            T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
            i = 0
-           if Kinematics == 'SCARA':
+           if Kinematics == 'SCARA' or Kinematics == 'PUMA':
                s = 0.0000001
            else:
-               s = 0.001
+               s = 0.000001
            w1 = np.full(len(q1), fill_value=1000000)
            w2 = w1
            w3 = w1
+           runningtime = time.time()
            # здесь  начинаем подбирать коэф. сглаживания, чтобы траектория удовлетворяла ограничениям
-           while i < (len(q1)):
+           while i < (len(q1)-3):
                try:
                    if (abs(Jq1[i]) > (Jmax + 0.01)):
                        print('jerk1', Jq1[i], i)
@@ -364,32 +412,33 @@ if __name__ == "__main__":
                        # q1 = np.delete(q1, i)
                        # q2 = np.delete(q2, i)
                        # q3 = np.delete(q3, i)
+                       runningtime = time.time()
                        BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
                        # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
                        u = 3
                        axis1tck = BSplines[0]
-                       q1 = BSplines[0](T)
-                       for i in range(len(q1)):
-                           Vq1.append(BSplines[0].derivatives(T[i])[1])
-                           Aq1.append(BSplines[0].derivatives(T[i])[2])
-                           Jq1.append(BSplines[0].derivatives(T[i])[3])
+                       # for i in range(len(q1)):
+                       #     Vq1.append(BSplines[0].derivatives(T[i])[1])
+                       #     Aq1.append(BSplines[0].derivatives(T[i])[2])
+                       #     Jq1.append(BSplines[0].derivatives(T[i])[3])
                        CartesianPoints = []
-                       CartesianPoints.append([])
                        for i in range((min(len(q1), len(q2), len(q3)))):
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[0])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[1])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[2])
                            CartesianPoints.append([])
+                           temp = (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                            e=DeltaE,
+                                            f=DeltaF))
+                           CartesianPoints[i].append(temp[0])
+                           CartesianPoints[i].append(temp[1])
+                           CartesianPoints[i].append(temp[2])
                        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
+                       BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
+                       q1 = BSplines[0](T)
+                       Vq1 = BSplines[0].derivative(1)
+                       Vq1 = Vq1(T)
+                       Aq1 = BSplines[0].derivative(2)
+                       Aq1 = Aq1(T)
+                       Jq1 = BSplines[0].derivative(3)
+                       Jq1 = Jq1(T)
                        # BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
                        # Jq1 = []
                        # Aq1 = []
@@ -403,10 +452,14 @@ if __name__ == "__main__":
                        # # res = RebuildSpline(Vq1, Aq1, Jq1, Coefficients, knots, 1)
                        # #t1 = spalde(T, BSplines[0])
                        i = 0
+                       print(time.time() - runningtime)
+
                    else:
                        i += 1
                except Exception as e:
                    print('q1 fit error', e)
+                   print(len(Jq1),'LEN JQ1')
+                   print(i)
                    i += 1
                try:
                    if (abs(Aq1[i]) > (Amax + 0.001)):
@@ -423,29 +476,38 @@ if __name__ == "__main__":
                        BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
                        # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
                        u = 3
-                       for i in range(len(q1)):
-                           Vq1.append(BSplines[0].derivatives(T[i])[1])
-                           Aq1.append(BSplines[0].derivatives(T[i])[2])
-                           Jq1.append(BSplines[0].derivatives(T[i])[3])
+                       Vq1 = BSplines[0].derivative(1)
+                       Vq1 = Vq1(T)
+                       Aq1 = BSplines[0].derivative(2)
+                       Aq1 = Aq1(T)
+                       Jq1 = BSplines[0].derivative(3)
+                       Jq1 = Jq1(T)
+                       # for i in range(len(q1)):
+                       #     Vq1.append(BSplines[0].derivatives(T[i])[1])
+                       #     Aq1.append(BSplines[0].derivatives(T[i])[2])
+                       #     Jq1.append(BSplines[0].derivatives(T[i])[3])
                        axis1tck = BSplines[0]
                        q1 = BSplines[0](T)
                        CartesianPoints = []
                        CartesianPoints.append([])
                        for i in range((min(len(q1), len(q2), len(q3)))):
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[0])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[1])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[2])
                            CartesianPoints.append([])
+                           temp = (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                               e=DeltaE,
+                                               f=DeltaF))
+                           CartesianPoints[i].append(temp[0])
+                           CartesianPoints[i].append(temp[1])
+                           CartesianPoints[i].append(temp[2])
                        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
+                       BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
+                       # Coefficients[0] = PPoly.from_spline(BSplines[0]).c
+                       u = 3
+                       Vq1 = BSplines[0].derivative(1)
+                       Vq1 = Vq1(T)
+                       Aq1 = BSplines[0].derivative(2)
+                       Aq1 = Aq1(T)
+                       Jq1 = BSplines[0].derivative(3)
+                       Jq1 = Jq1(T)
                        # BSplines = PrepareBSpline(q1, q2, q3, T, 1, s, w=w1, ideal=False)
                        # Jq1 = []
                        # Aq1 = []
@@ -464,14 +526,17 @@ if __name__ == "__main__":
                        i += 1
                except Exception as e:
                    print('q1 fit error', e)
+                   print(len(Aq1), 'LEN AQ1')
+                   print(i)
                    i += 1
-           T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
+           #T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
            i = 0
-           if Kinematics == 'SCARA':
+           print(len(Jq2))
+           if Kinematics == 'SCARA' or Kinematics == 'PUMA':
                s = 0.0000001
            else:
-               s = 0.001
-           while i < (len(q2)):
+               s = 0.000001
+           while i < (len(q2)-3):
                if (abs(Jq2[i]) > (Jmax + 0.0001)):
                    print('jerk2', Jq2[i], i)
                    Jq2 = []
@@ -485,28 +550,36 @@ if __name__ == "__main__":
                    w2[i] /= 1.51
                    BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    q2 = BSplines[1](T)
-                   for i in range(len(q2)):
-                       Vq2.append(BSplines[1].derivatives(T[i])[1])
-                       Aq2.append(BSplines[1].derivatives(T[i])[2])
-                       Jq2.append(BSplines[1].derivatives(T[i])[3])
+                   Vq2 = BSplines[1].derivative(1)
+                   Vq2 = Vq2(T)
+                   Aq2 = BSplines[1].derivative(2)
+                   Aq2 = Aq2(T)
+                   Jq2 = BSplines[1].derivative(3)
+                   Jq2 = Jq2(T)
+                   # for i in range(len(q2)):
+                   #     Vq2.append(BSplines[1].derivatives(T[i])[1])
+                   #     Aq2.append(BSplines[1].derivatives(T[i])[2])
+                   #     Jq2.append(BSplines[1].derivatives(T[i])[3])
                    CartesianPoints = []
                    CartesianPoints.append([])
                    axis2tck = BSplines[1]
                    for i in range((min(len(q1), len(q2), len(q3)))):
-                       CartesianPoints[i].append(
-                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                        e=DeltaE,
-                                        f=DeltaF))[0])
-                       CartesianPoints[i].append(
-                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                        e=DeltaE,
-                                        f=DeltaF))[1])
-                       CartesianPoints[i].append(
-                           (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                        e=DeltaE,
-                                        f=DeltaF))[2])
                        CartesianPoints.append([])
+                       temp = (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                           e=DeltaE,
+                                           f=DeltaF))
+                       CartesianPoints[i].append(temp[0])
+                       CartesianPoints[i].append(temp[1])
+                       CartesianPoints[i].append(temp[2])
                    T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
+                   BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
+                   q2 = BSplines[1](T)
+                   Vq2 = BSplines[1].derivative(1)
+                   Vq2 = Vq2(T)
+                   Aq2 = BSplines[1].derivative(2)
+                   Aq2 = Aq2(T)
+                   Jq2 = BSplines[1].derivative(3)
+                   Jq2 = Jq2(T)
                    # BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                    # Jq2 = []
                    # Aq2 = []
@@ -539,33 +612,42 @@ if __name__ == "__main__":
                        BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                        axis2tck = BSplines[1]
                        q2 = BSplines[1](T)
-                       for i in range(len(q2)):
-                           Vq2.append(BSplines[1].derivatives(T[i])[1])
-                           Aq2.append(BSplines[1].derivatives(T[i])[2])
-                           Jq2.append(BSplines[1].derivatives(T[i])[3])
+                       Vq2 = BSplines[1].derivative(1)
+                       Vq2 = Vq2(T)
+                       Aq2 = BSplines[1].derivative(2)
+                       Aq2 = Aq2(T)
+                       Jq2 = BSplines[1].derivative(3)
+                       Jq2 = Jq2(T)
+                       # for i in range(len(q2)):
+                       #     Vq2.append(BSplines[1].derivatives(T[i])[1])
+                       #     Aq2.append(BSplines[1].derivatives(T[i])[2])
+                       #     Jq2.append(BSplines[1].derivatives(T[i])[3])
                        CartesianPoints = []
                        CartesianPoints.append([])
                        for i in range((min(len(q1), len(q2), len(q3)))):
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[0])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[1])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[2])
                            CartesianPoints.append([])
+                           temp = (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                               e=DeltaE,
+                                               f=DeltaF))
+                           CartesianPoints[i].append(temp[0])
+                           CartesianPoints[i].append(temp[1])
+                           CartesianPoints[i].append(temp[2])
                        T = planTime(times, CartesianPoints, MoveList, Jmax, q2, CurrentStartTime)
+                       BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
+                       axis2tck = BSplines[1]
+                       q2 = BSplines[1](T)
+                       Vq2 = BSplines[1].derivative(1)
+                       Vq2 = Vq2(T)
+                       Aq2 = BSplines[1].derivative(2)
+                       Aq2 = Aq2(T)
+                       Jq2 = BSplines[1].derivative(3)
+                       Jq2 = Jq2(T)
                        # BSplines = PrepareBSpline(q1, q2, q3, T, 2, s, w=w2)
                        # q2 = BSplines[1](T)
                        # axis2tck = BSplines[1]
                        # Jq2 = []
                        # Aq2 = []
-                       # Vq2 = []
+                       # Vоченq2 = []
                        # for i in range(len(q2)):
                        #     Vq2.append(BSplines[1].derivatives(T[i])[1])
                        #     Aq2.append(BSplines[1].derivatives(T[i])[2])
@@ -578,14 +660,16 @@ if __name__ == "__main__":
                        i += 1
                except Exception as e:
                    print('q2 fit error', e)
+                   print(len(Jq2), 'LEN JQ2')
+                   print(i)
                    i += 1
-           T = planTime(times, CartesianPoints, MoveList, Jmax, q3, CurrentStartTime)
+           #T = planTime(times, CartesianPoints, MoveList, Jmax, q3, CurrentStartTime)
            i = 0
-           if Kinematics == 'SCARA':
+           if Kinematics == 'SCARA' or Kinematics == 'PUMA':
                s = 0.00000001
            else:
-               s = 0.001
-           while i < (len(q3)):
+               s = 0.000001
+           while i < (len(q3)-3):
                try:
                    if (abs(Jq3[i]) > (Jmax + 0.0001)):
                        print('jerk3', Jq3[i], i)
@@ -601,27 +685,35 @@ if __name__ == "__main__":
                        BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                        axis3tck = BSplines[2]
                        q3 = BSplines[2](T)
-                       for i in range(len(q3)):
-                           Vq3.append(BSplines[2].derivatives(T[i])[1])
-                           Aq3.append(BSplines[2].derivatives(T[i])[2])
-                           Jq3.append(BSplines[2].derivatives(T[i])[3])
+                       Vq3 = BSplines[2].derivative(1)
+                       Vq3 = Vq3(T)
+                       Aq3 = BSplines[2].derivative(2)
+                       Aq3 = Aq3(T)
+                       Jq3 = BSplines[2].derivative(3)
+                       Jq3 = Jq3(T)
+                       # for i in range(len(q3)):
+                       #     Vq3.append(BSplines[2].derivatives(T[i])[1])
+                       #     Aq3.append(BSplines[2].derivatives(T[i])[2])
+                       #     Jq3.append(BSplines[2].derivatives(T[i])[3])
                        CartesianPoints = []
                        CartesianPoints.append([])
-                       for i in range((min(len(q1), len(q2), len(q3)))):
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[0])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[1])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[2])
-                           CartesianPoints.append([])
+                       CartesianPoints.append([])
+                       temp = (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                           e=DeltaE,
+                                           f=DeltaF))
+                       CartesianPoints[i].append(temp[0])
+                       CartesianPoints[i].append(temp[1])
+                       CartesianPoints[i].append(temp[2])
                        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
+                       BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
+                       axis3tck = BSplines[2]
+                       q3 = BSplines[2](T)
+                       Vq3 = BSplines[2].derivative(1)
+                       Vq3 = Vq3(T)
+                       Aq3 = BSplines[2].derivative(2)
+                       Aq3 = Aq3(T)
+                       Jq3 = BSplines[2].derivative(3)
+                       Jq3 = Jq3(T)
                        # BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                        # axis3tck = BSplines[2]
                        # Jq3 = []
@@ -655,28 +747,36 @@ if __name__ == "__main__":
                        w3[i] /= 1.51
                        BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                        q3 = BSplines[2](T)
-                       for i in range(len(q3)):
-                           Vq3.append(BSplines[2].derivatives(T[i])[1])
-                           Aq3.append(BSplines[2].derivatives(T[i])[2])
-                           Jq3.append(BSplines[2].derivatives(T[i])[3])
+                       Vq3 = BSplines[2].derivative(1)
+                       Vq3 = Vq3(T)
+                       Aq3 = BSplines[2].derivative(2)
+                       Aq3 = Aq3(T)
+                       Jq3 = BSplines[2].derivative(3)
+                       Jq3 = Jq3(T)
+                       # for i in range(len(q3)):
+                       #     Vq3.append(BSplines[2].derivatives(T[i])[1])
+                       #     Aq3.append(BSplines[2].derivatives(T[i])[2])
+                       #     Jq3.append(BSplines[2].derivatives(T[i])[3])
                        axis3tck = BSplines[2]
                        CartesianPoints = []
                        CartesianPoints.append([])
                        for i in range((min(len(q1), len(q2), len(q3)))):
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[0])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[1])
-                           CartesianPoints[i].append(
-                               (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
-                                            e=DeltaE,
-                                            f=DeltaF))[2])
                            CartesianPoints.append([])
+                           temp = (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF,
+                                               e=DeltaE,
+                                               f=DeltaF))
+                           CartesianPoints[i].append(temp[0])
+                           CartesianPoints[i].append(temp[1])
+                           CartesianPoints[i].append(temp[2])
                        T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
+                       BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
+                       q3 = BSplines[2](T)
+                       Vq3 = BSplines[2].derivative(1)
+                       Vq3 = Vq3(T)
+                       Aq3 = BSplines[2].derivative(2)
+                       Aq3 = Aq3(T)
+                       Jq3 = BSplines[2].derivative(3)
+                       Jq3 = Jq3(T)
                        # BSplines = PrepareBSpline(q1, q2, q3, T, 3, s, w=w3)
                        # Jq3 = []
                        # Aq3 = []
@@ -697,14 +797,15 @@ if __name__ == "__main__":
                    print('q3 fit error', e)
                    i += 1
            # knots = utilities.generate_knot_vector(5, len(q3))
+           print('TESTING2', time.time() - runningtime)
            outputpoints = []
 
-           q1der = np.array([[q1[i], Vq1[i], Aq1[i], Jq1[i]] for i in range(min(len(q1), len(Vq1), len(Aq1)))],
-                            dtype=object)
-           q2der = np.array([[q2[i], Vq2[i], Aq2[i], Jq2[i]] for i in range(min(len(q2), len(Vq2), len(Aq2)))],
-                            dtype=object)
-           q3der = np.array([[q3[i], Vq3[i], Aq3[i], Jq3[i]] for i in range(min(len(q3), len(Vq3), len(Aq3)))],
-                            dtype=object)
+           # q1der = np.array([[q1[i], Vq1[i], Aq1[i], Jq1[i]] for i in range(min(len(q1), len(Vq1), len(Aq1)))],
+           #                  dtype=object)
+           # q2der = np.array([[q2[i], Vq2[i], Aq2[i], Jq2[i]] for i in range(min(len(q2), len(Vq2), len(Aq2)))],
+           #                  dtype=object)
+           # q3der = np.array([[q3[i], Vq3[i], Aq3[i], Jq3[i]] for i in range(min(len(q3), len(Vq3), len(Aq3)))],
+           #                  dtype=object)
 
            # if q1der[0][1] > 0:
            #     q1der[0] = [q1[0], 0, 0, Jmax]
@@ -729,17 +830,16 @@ if __name__ == "__main__":
            realpoints[0].append(CurrentPos[0])
            realpoints[1].append(CurrentPos[1])
            realpoints[2].append(CurrentPos[2])
-
            # по пзк получаем траекторию инструмента
            for i in range((min(len(q1), len(q2), len(q3)))):
                realpoints[0].append(
-                   (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[0])
                realpoints[1].append(
-                   (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[1])
                realpoints[2].append(
-                   (ForwardKins([q1[i], q2[i], q3[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                   (ForwardKins([q1[i], q2[i], q3[i], q4[i], q5[i], q6[i]], 400, 250, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
                                 f=DeltaF))[2])
 
            # fig = plt.figure()
@@ -747,10 +847,10 @@ if __name__ == "__main__":
            # ax.plot(realpoints[0], realpoints[1], realpoints[2], label='parametric curve')
            # plt.show()
 
-           # for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
-           #      realspeed[0].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[0])
-           #      realspeed[1].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[1])
-           #      realspeed[2].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[2])
+           for i in range((min(len(Vq1), len(Vq2), len(Vq3)))):
+                realspeed[0].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[0])
+                realspeed[1].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[1])
+                realspeed[2].append((ForwardKins([Vq1[i], Vq2[i], Vq3[i]], 175, 275, 100, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF))[2])
 
            # realspeed[0] = np.array(realpoints[0])
            # realspeed[1] = np.array(realpoints[1])
@@ -914,7 +1014,58 @@ if __name__ == "__main__":
            realspeed[1].append(0)
            realspeed[2].append(0)
            print(len(q1), len(q2), len(q3), len(Vq1), len(Vq2))
-           temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 250, 'SCARA', re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
+           temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 250, Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE, f=DeltaF)
+           # temp.append(diff(realpoints[0], T))
+           # temp.append(diff(realpoints[1], T))
+           # temp.append(diff(realpoints[2], T))
+           realspeed[0] = temp[0]
+           realspeed[1] = temp[1]
+           realspeed[2] = temp[2]
+           test1 = dxdt(np.array(realpoints[0]), np.linspace(0, T[-1], len(realpoints[0])))
+           test2 = dxdt(np.array(realpoints[1]), np.linspace(0, T[-1], len(realpoints[1])))
+           test1-=2
+           test2 -= 2
+           for i in range(min(len(realspeed[0]), len(realspeed[1]), len(realspeed[2]))):
+               if math.sqrt(test1[i] ** 2 + test2[i] ** 2) < 50:
+                   vp.append(math.sqrt(test1[i] ** 2 + test2[i] ** 2))
+           import plotly.graph_objects as go
+           import plotly.express as px
+           from plotly.subplots import make_subplots
+           t  =np.linspace(0, T[-1], len(T))
+           print(len(vp), len(t))
+           #vp = dxdt(np.array(vp), t)
+           fig = px.scatter(x=realpoints[0], y=realpoints[1])
+           fig = go.Figure(data=[
+               #x = np.linspace(0, T[-1], len(vp))
+               go.Scatter(x=[0, 6.4172], y=[10, 10], name='Скорость инструмента', line=dict(color='green', width=5)),
+               go.Scatter(x=[0, 6.4172], y=[10, 10], name='Задание по скорости',
+                          line=dict(color='red', width=5, dash='dot'))])
+           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           fig.update_layout(xaxis_range=[3.4, 4.1])
+           fig.update_layout(font=dict(size=20), xaxis_title="T", yaxis_title="V,мм/с")
+           fig.update_layout(showlegend=False)
+
+           fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.write_image("ch32.svg")
+           fig.show()
+           fig.show()
+           fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1])])
+           fig.show()
+           file = open('prg1.sgn', 'r')
+           vp = []
+           j1 = []
+           realspeed = []
+           temp = []
+           realspeed.append([])
+           realspeed.append([])
+           realspeed.append([])
+           realspeed[0].append(0)
+           realspeed[1].append(0)
+           realspeed[2].append(0)
+           print(len(q1), len(q2), len(q3), len(Vq1), len(Vq2))
+           temp = ForwardSpeedKins(q1, q2, Vq1, Vq2, Vq3, 400, 250,Kinematics, re=DeltaRE, rf=DeltaRF, e=DeltaE,
+                                   f=DeltaF)
            # temp.append(diff(realpoints[0], T))
            # temp.append(diff(realpoints[1], T))
            # temp.append(diff(realpoints[2], T))
@@ -923,14 +1074,6 @@ if __name__ == "__main__":
            realspeed[2] = temp[2]
            for i in range(min(len(realspeed[0]), len(realspeed[1]), len(realspeed[2]))):
                vp.append(math.sqrt(realspeed[0][i] ** 2 + realspeed[1][i] ** 2 + realspeed[2][i] ** 2))
-           import plotly.graph_objects as go
-           import plotly.express as px
-           from plotly.subplots import make_subplots
-
-           # fig = px.scatter(x=realpoints[0], y=realpoints[1])
-           # fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1])])
-           # fig.show()
-           # file = open('prg1.sgn', 'r')
            #
            # file = file.read()
            # file = str(file)
@@ -961,15 +1104,13 @@ if __name__ == "__main__":
            # # строим графики из файлов Spiiplus
            # refx = list(map(float, file[refposxindexstart:refposxindexend]))  # преобразуем строки в инты
            # refy = list(map(float, file[refposyindexstart:refposyindexend]))
-           # fig = go.Figure(data=[go.Scatter(x=refy, y=refx, name='SPiiPLus points'),
-           #                       go.Scatter(x=IdealpointsX, y=IdealpointsY, name='Idealr points'),
-           #                       go.Scatter(x=realpoints[0], y=realpoints[1],
-           #                                  name='Interpolator points')])  # go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
-           # fig.show()
-           # fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points'),
-           #                       go.Scatter(x=IdealpointsX, y=IdealpointsY,
-           #                                  name='Idealr points')])  # go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
-           # fig.show()
+           fig = go.Figure(data=[go.Scatter(x=realpoints[0], y=realpoints[1],
+                                            name='Interpolator points',line=dict(color='blue', width=5))])
+           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           fig.update_xaxes(showline=False, linewidth=0, linecolor='White', gridcolor='White', gridwidth=2)
+           fig.update_yaxes(showline=False, linewidth=0, linecolor='White', gridcolor='White', gridwidth=2)
+           # go.Scatter(x=realpoints[0], y=realpoints[1], name='Interpolator points')
+           fig.show()
            # refposxindexstart = file.index('}', file.index('Variable= Feedback Velocity(0)'), -1) + 1
            # refposxindexend = -1
            # refposyindexstart = file.index('}', file.index('Variable= Feedback Velocity(1)'), -1) + 1
@@ -993,30 +1134,60 @@ if __name__ == "__main__":
            while len(T) > len(vp):
                print(len(T), len(vp))
                T.pop()
-           fig = px.scatter(x=np.arange(0, len(vp), 1), y=vp, title='Tool speed')
-           #fig.show()
+           vp = medfilt(vp, 121)
+           fig = go.Figure(data=[go.Scatter(x=T, y=vp, name='Скорость инструмента', line=dict(color='green',width=5)),go.Scatter(x=[0,6.4172], y=[10,10], name='Задание по скорости',  line=dict(color='red', width=5, dash='dot'))])
+           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           fig.update_layout(font=dict(size=20), xaxis_title="T", yaxis_title="V,мм/с")
+           fig.update_layout(xaxis_range=[3.4, 4.1])
+           fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.update_layout(showlegend=False)
+           fig.write_image("ch3.svg")
+           fig.show()
+           t = np.linspace(0, len(T), len(T))
+           fig = go.Figure(data=[
+               go.Scatter(x=t, y=T, line=dict(color='blue',width=5), name='Перестроенная ось времени'), go.Scatter(x=[0,len(T)], y=[0,5.8172], name='Изначальная ось времени', line=dict(color='red', width=5, dash='dot'))])
+           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           fig.update_traces(marker=dict(size=15, color='red', symbol='circle'))
+           fig.update_layout(font=dict(size=20), xaxis_title="i", yaxis_title="T")
+           fig.update_layout(xaxis_range=[1100, 1500])
+           fig.update_layout(yaxis_range=[2.7, 5])
+           fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.update_layout(showlegend=False)
+           fig.write_image("time.svg")
+           fig.show()
            # fig = go.Figure(data=[go.Scatter(x=T, y=BVq1), go.Scatter(x=T, y=BVq2), go.Scatter(x=T, y=BVq3)])
            T = planTime(times, CartesianPoints, MoveList, Jmax, q1, CurrentStartTime)
-           fig = px.scatter(x=T, y=q2, title='Axis 2 position')
-           #fig.show()
+           fig = go.Figure(data=[go.Scatter(x=T, y=q2, name='Положение оси', line=dict(color='blue',width=1))])
+           #fig = px.scatter(x=T, y=q2)
+           fig.update_layout(plot_bgcolor='rgba(0,0,0,0)')
+           fig.update_traces(mode='lines+markers', marker=dict(size=5, color='blue', symbol='circle'))
+           fig.update_layout(font=dict(size=20), xaxis_title="T", yaxis_title="q_m")
+           fig.update_layout(yaxis_range=[309, 310.05])
+           fig.update_layout(xaxis_range=[3.4, 4.1])
+           fig.update_xaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.update_yaxes(showline=True, linewidth=2, linecolor='LightGrey', gridcolor='LightGrey', gridwidth=2)
+           fig.write_image("axis2.svg")
+           fig.show()
            T = planTime(times, CartesianPoints, MoveList, Jmax, Vq1, CurrentStartTime)
            fig = go.Figure(
                data=[go.Scatter(x=T, y=realspeed[0], name='Tool X Speed'),
                      go.Scatter(x=T, y=realspeed[1], name='Tool Y Speed'),
                      go.Scatter(x=T, y=realspeed[2], name='Tool Z Speed')])
-           #fig.show()
+           fig.show()
            fig = go.Figure(
                data=[go.Scatter(x=T, y=Vq1, name='Axis 1 speed'), go.Scatter(x=T, y=Vq2, name='Axis 2 speed'),
                      go.Scatter(x=T, y=Vq3, name='Axis 3 speed')])
-           #fig.show()
+           fig.show()
            fig = go.Figure(
                data=[go.Scatter(x=T, y=Aq1, name='Axis 1 accel'), go.Scatter(x=T, y=Aq2, name='Axis 2 accel'),
                      go.Scatter(x=T, y=Aq3, name='Axis 3 accel')])
-           #fig.show()
+           fig.show()
            fig = go.Figure(data=[go.Scatter(x=T, y=Jq1, name='Axis 1 jerk'), go.Scatter(x=T, y=Jq2, name='Axis 2 jerk'),
                                  go.Scatter(x=T, y=Jq3, name='Axis 3 jerk')])
-           #fig.show()
-           # test2 = scipy.interpolate.splev(T, BSplines[0])
+           fig.show()
+           #test2 = scipy.interpolate.splev(T, BSplines[0])
 
            # plt.plot(T, Jq1, 'b', label='q1')
            # plt.plot(T, q2, 'r', label='q2')
@@ -1044,9 +1215,6 @@ if __name__ == "__main__":
            # plt.plot(T, q1, 'r', label='label here')
            plt.legend(loc='best')
            # plt.show()
-           runningtime = time.time() - runningtime
-           runningtimelist.append(runningtime)
-           print('RUNTIME', runningtime)
            runningtime = time.time()
            # теперь можно перестроить сплайны по полученным коэф и опрделеить их вдоль оси времени сервы
            if len(prg) == 1:
@@ -1150,7 +1318,7 @@ if __name__ == "__main__":
                Axis3Pos += list(Axis3FinalPos)
                Axis3Spd += list(Axis3FinalSpeed)
                Axis3Acc += list(Axis3FinalAcc)
-               fig = px.scatter(x=timeaxis, y=Axis3FinalPos, title='Axis 1 pos')
+               #fig = px.scatter(x=timeaxis, y=Axis3FinalPos, title='Axis 1 pos')
                #fig.show()
 
                print(len(Axis3FinalSpeed))
@@ -1176,24 +1344,25 @@ if __name__ == "__main__":
                realpoints[0] = []
                realpoints[1] = []
                realpoints[2] = []
-               for i in range((min(len(Axis1FinalPos), len(Axis2FinalPos), len(Axis3FinalPos)))):
-                   realpoints[0].append(
-                       (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics,
-                                    re=DeltaRE, rf=DeltaRF, e=DeltaE,
-                                    f=DeltaF))[0])
-                   realpoints[1].append(
-                       (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics,
-                                    re=DeltaRE, rf=DeltaRF, e=DeltaE,
-                                    f=DeltaF))[1])
-                   realpoints[2].append(
-                       (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics,
-                                    re=DeltaRE, rf=DeltaRF, e=DeltaE,
-                                    f=DeltaF))[2])
-               print(np.diff(timeaxis))
-               fig = go.Figure(
-                   data=[go.Scatter(x=realpoints[0], y=realpoints[1], name='test setpoints')])
-               #fig.show()
-               #exit(0)
+               # for i in range((min(len(Axis1FinalPos), len(Axis2FinalPos), len(Axis3FinalPos)))):
+               #     realpoints[0].append(
+               #         (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics,
+               #                      re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               #                      f=DeltaF))[0])
+               #     realpoints[1].append(
+               #         (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics,
+               #                      re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               #                      f=DeltaF))[1])
+               #     realpoints[2].append(
+               #         (ForwardKins([Axis1FinalPos[i], Axis2FinalPos[i], Axis3FinalPos[i]], 400, 250, 100, Kinematics,
+               #                      re=DeltaRE, rf=DeltaRF, e=DeltaE,
+               #                      f=DeltaF))[2])
+               # print(np.diff(timeaxis))
+               # fig = go.Figure(
+               #     data=[go.Scatter(x=realpoints[0], y=realpoints[1], name='test setpoints')])
+               # #fig.show()
+               print('RUNTIME3', time.time() - runningtime)
+               exit(0)
            else:
                Axis1Pos += list(q1)
                Axis2Pos += list(q2)
